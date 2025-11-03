@@ -320,12 +320,13 @@ def gen_snippet_map(netlist: Netlist, root_snippet_name: SnippetName) -> Snippet
         for snippet_name, snippet_pin_name in net:
             # Does this pin belong to the root snippet?
             if snippet_name == root_snippet_name:
-                # This doesn't hold for pluto...
+                # TODO: This doesn't hold for pluto...
                 if root_snippet_pin_name is not None:
                     print(
                         f"Two pins of the root snippet {root_snippet_name}, {snippet_pin_name} and {root_snippet_pin_name} are connected together.",
                         file=sys.stderr,
                     )
+                    # TODO:
                     sys.exit(1)
                 root_snippet_pin_name = snippet_pin_name
             else:
@@ -340,7 +341,7 @@ def gen_snippet_map(netlist: Netlist, root_snippet_name: SnippetName) -> Snippet
         for snippet in snippets_lookup.values()
         if snippet.name != root_snippet_name
     }
-    assert root_snippet_name not in snippets_lookup
+    assert root_snippet_name not in snippet_map.snippets
     snippet_map.root_snippet = snippets_lookup[root_snippet_name]
 
     return snippet_map
@@ -421,7 +422,7 @@ def parse_netlist(netlist_path: Path) -> Netlist:
 
 
 def stringify_snippet_map(snippet_map: SnippetMap) -> str:
-    print(snippet_map)
+    print(snippet_map.root_snippet)
     # TODO
     pass
 
