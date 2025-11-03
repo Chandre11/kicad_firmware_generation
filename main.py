@@ -344,7 +344,7 @@ def gen_snippet_map(netlist: Netlist, root_snippet_name: SnippetName) -> Snippet
                 if root_snippet_pin_name is not None:
                     print(
                         f"Warning: At least two pins of the root snippet {root_snippet_name}, {snippet_pin_name} and {root_snippet_pin_name} are connected together.\n"
-                        "The entire net these pins are connected to will not be part of the snippet map",
+                        "The entire net these pins are connected to will not be part of the snippet map.",
                         file=sys.stderr,
                     )
                     root_snippet_pin_name = None
@@ -367,7 +367,7 @@ def gen_snippet_map(netlist: Netlist, root_snippet_name: SnippetName) -> Snippet
         for snippet in snippets_lookup.values()
         if snippet.name != root_snippet_name
     }
-    assert root_snippet_name not in snippet_map.snippets
+    assert root_snippet_name not in {snippet.name for snippet in snippet_map.snippets}
     snippet_map.root_snippet = snippets_lookup[root_snippet_name]
 
     return snippet_map
@@ -447,11 +447,47 @@ def parse_netlist(netlist_path: Path) -> Netlist:
     return netlist
 
 
-def stringify_snippet_map(snippet_map: SnippetMap) -> str:
-    # for pin in snippet_map.root_snippet.pins:
-    #     print(pin)
-    # TODO
-    sys.exit()
+def stringify_snippet(snippet: Snippet, tag_name: str) -> ET.Element:
+    root = ET.Element(tag_name)
+    root.set("name", snippet.name)
+    root.set("type", snippet.type_name)
+
+    snippet_map_fields = ET.SubElement(root, "snippetMapFields")
+    for key, value in snippet.snippet_map_fields.items():
+        snippet_map_field = ET.SubElement(snippet_map_fields, "snippetMapField")
+        snippet_map_field.set("name", key)
+        snippet_map_field.text = value
+
+    pins = ET.SubElement(root, "pins")
+    for name, root_snippet_pin in snippet.pins.items():
+        pin = ET.SubElement(pins, "pin")
+        pin.set("name", name)
+        if root_snippet_pin is not None:
+            pin.set("rootSnippetPin", root_snippet_pin)
+    return root
+
+
+def stringify_snippet_map(snippet_map: SnippetMap) -> ET.Element:
+    root = ET.Element("snippetMap")
+
+    netlist = ET.SubElement(root, "netlist")
+    source = ET.SubElement(netlist, "source")
+    source.text = str(snippet_map.source)
+    date = ET.SubElement(netlist, "date")
+    date.text = snippet_map.date.isoformat()
+    tool = ET.SubElement(netlist, "tool")
+    tool.text = snippet_map.tool
+
+    root_snippet = stringify_snippet(snippet_map.root_snippet, "rootSnippet")
+    root.append(root_snippet)
+
+    snippets = ET.SubElement(root, "snippet")
+    for snippet in snippet_map.snippets:
+        xml_snippet = stringify_snippet(snippet, "snippet")
+        snippets.append(xml_snippet)
+
+    ET.indent(root, space="    ", level=0)
+    return root
 
 
 def main() -> None:
@@ -465,7 +501,7 @@ def main() -> None:
     root_snippet_name = SnippetName(sys.argv[2])
     netlist = parse_netlist(netlist_path)
     snippet_map = gen_snippet_map(netlist, root_snippet_name)
-    print(stringify_snippet_map(snippet_map))
+    ET.dump(stringify_snippet_map(snippet_map))
 
 
 if __name__ == "__main__":
