@@ -114,7 +114,7 @@ def group_components_by_snippet(
         else:
             snippets[snippet_name].components.add(component)
 
-        for field_name, field_value in component.fields:
+        for field_name, field_value in component.fields.items():
             if not field_name.startswith(SNIPPET_MAP_FIELD_PREFIX):
                 # This is not a SnippetMapField.
                 continue
@@ -315,7 +315,7 @@ def stringify_snippet_map(snippet_map: SnippetMap) -> str:
     pass
 
 
-def main():
+def main() -> None:
     if len(sys.argv) != 3:
         print(
             "Provide two arguments: the input file path and the root snippet name",
