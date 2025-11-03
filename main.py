@@ -1,6 +1,6 @@
 import sys
 from pathlib import Path
-from typing import Set, Dict, Tuple, NewType
+from typing import FrozenSet, Set, Dict, Tuple, NewType
 from datetime import datetime
 import xml.etree.ElementTree as ET
 
@@ -24,7 +24,8 @@ GlobalSnippetPinIdentifier = NewType(
     "GlobalSnippetPinIdentifier", Tuple[SnippetName, SnippetPinName]
 )
 # These pins are connected.
-SnippetNet = NewType("SnippetNet", Set[GlobalSnippetPinIdentifier])
+MutableSnippetNet = NewType("MutableSnippetNet", Set[GlobalSnippetPinIdentifier])
+SnippetNet = NewType("SnippetNet", FrozenSet[GlobalSnippetPinIdentifier])
 SnippetNetList = NewType("SnippetNetList", Set[SnippetNet])
 
 
@@ -33,6 +34,9 @@ class Component:
     sheetpath: SheetPath
     fields: Dict[str, str]
 
+    def __repr__(self) -> str:
+        return f"Component(ref={self.ref!r}, sheetpath={self.sheetpath!r}, fields={list(self.fields.keys())!r})"
+
 
 # a pin on a component that is connected to some net(s)
 class Node:
@@ -40,9 +44,15 @@ class Node:
     pin: NodePinName
     pinfunction: NodePinFunction
 
+    def __repr__(self) -> str:
+        return f"Node(ref={self.ref!r}, pin={self.pin!r}, pinfunction={self.pinfunction!r})"
+
 
 class Net:
     nodes: Set[Node]
+
+    def __repr__(self) -> str:
+        return f"Net(nodes={len(self.nodes)} nodes)"
 
 
 class Netlist:
@@ -51,6 +61,13 @@ class Netlist:
     # TODO: ensure refs are unique
     components: Dict[ComponentRef, Component]
     nets: Set[Net]
+
+    def __repr__(self) -> str:
+        return (
+            f"Netlist(source={self.source!r}, "
+            f"components={len(self.components)} components, "
+            f"nets={len(self.nets)} nets)"
+        )
 
 
 class Snippet:
@@ -62,6 +79,12 @@ class Snippet:
     # If this is the root snippet the value is always None.
     pins: Dict[SnippetPinName, SnippetPinName | None]
 
+    def __repr__(self) -> str:
+        return (
+            f"Snippet(name={self.name!r}, type_name={self.type_name!r}, "
+            f"fields={list(self.snippet_map_fields.keys())!r}, pins={len(self.pins)})"
+        )
+
 
 class SnippetMap:
     source: Path
@@ -71,6 +94,13 @@ class SnippetMap:
     root_snippet: Snippet
     snippets: Set[Snippet]
 
+    def __repr__(self) -> str:
+        return (
+            f"SnippetMap(source={self.source!r}, date={self.date.isoformat()}, "
+            f"tool={self.tool!r}, root_snippet={self.root_snippet.name!r}, "
+            f"snippets={len(self.snippets)})"
+        )
+
 
 class RawSnippet:
     name: SnippetName
@@ -79,6 +109,12 @@ class RawSnippet:
     snippet_map_fields: Dict[str, str]
 
     components: Set[Component]
+
+    def __repr__(self) -> str:
+        return (
+            f"RawSnippet(name={self.name!r}, type_name={self.type_name!r}, "
+            f"fields={list(self.snippet_map_fields.keys())!r}, components={len(self.components)})"
+        )
 
 
 # mapping from snippet name to the info we can directly pull from the KiCad netlist
@@ -114,6 +150,7 @@ def group_components_by_snippet(
         else:
             snippets[snippet_name].components.add(component)
 
+        snippets[snippet_name].snippet_map_fields = dict()
         for field_name, field_value in component.fields.items():
             if not field_name.startswith(SNIPPET_MAP_FIELD_PREFIX):
                 # This is not a SnippetMapField.
@@ -124,7 +161,7 @@ def group_components_by_snippet(
                     f"""The snippet {snippet_name} contains the SnippetMapField {snippet_map_field_name} twice.
 They have the values {field_value} and {snippets[snippet_name].snippet_map_fields[snippet_map_field_name]}.
 One is in component {component.ref}.""",
-                    sys.stderr,
+                    file=sys.stderr,
                 )
                 sys.exit(1)
             snippets[snippet_name].snippet_map_fields[snippet_map_field_name] = (
@@ -166,7 +203,7 @@ def get_explicit_pin_name_lookups(
                 if snippet_pin_name in snippet_pin_names:
                     print(
                         f"The SnippetPin {snippet_pin_name} exists twice for the snippet {snippet_name}.",
-                        sys.stderr,
+                        file=sys.stderr,
                     )
                     sys.exit(1)
                 snippet_pin_names.add(snippet_pin_name)
@@ -200,7 +237,7 @@ def convert_netlist(
 
     snippet_netlist = SnippetNetList(set())
     for net in netlist.nets:
-        snippet_net = SnippetNet(set())
+        snippet_net = MutableSnippetNet(set())
         for node in net.nodes:
             if node.ref not in snippets_reverse_lookup:
                 # The node does not belong to a component that belongs to a snippet.
@@ -235,14 +272,14 @@ def convert_netlist(
             ):
                 print(
                     f"the pin {snippet_pin_name} in the snippet {snippet_name} occurs in multiple components: {global_snippet_pin_to_component[global_snippet_pin_identifier]} and {node.ref}.",
-                    sys.stderr,
+                    file=sys.stderr,
                 )
                 sys.exit(1)
             global_snippet_pin_to_component[global_snippet_pin_identifier] = node.ref
 
             # This might very well be the only pin in the snippet net.
             snippet_net.add(global_snippet_pin_identifier)
-        snippet_netlist.add(snippet_net)
+        snippet_netlist.add(SnippetNet(frozenset(snippet_net)))
     return snippet_netlist
 
 
@@ -258,8 +295,11 @@ def gen_snippet_map(netlist: Netlist, root_snippet_name: SnippetName) -> Snippet
     snippet_map.date = datetime.now()
     snippet_map.tool = TOOL_NAME
 
-    if raw_snippets_lookup[root_snippet_name] is None:
-        print(f"Didn't find a root snippet with name {root_snippet_name}.", sys.stderr)
+    if root_snippet_name not in raw_snippets_lookup:
+        print(
+            f"Didn't find a root snippet with name {root_snippet_name}.",
+            file=sys.stderr,
+        )
         sys.exit(1)
 
     # Create representations for all snippets without their pins.
@@ -280,10 +320,11 @@ def gen_snippet_map(netlist: Netlist, root_snippet_name: SnippetName) -> Snippet
         for snippet_name, snippet_pin_name in net:
             # Does this pin belong to the root snippet?
             if snippet_name == root_snippet_name:
+                # This doesn't hold for pluto...
                 if root_snippet_pin_name is not None:
                     print(
                         f"Two pins of the root snippet {root_snippet_name}, {snippet_pin_name} and {root_snippet_pin_name} are connected together.",
-                        sys.stderr,
+                        file=sys.stderr,
                     )
                     sys.exit(1)
                 root_snippet_pin_name = snippet_pin_name
@@ -306,12 +347,82 @@ def gen_snippet_map(netlist: Netlist, root_snippet_name: SnippetName) -> Snippet
 
 
 def parse_netlist(netlist_path: Path) -> Netlist:
+    netlist = Netlist()
+
     tree = ET.parse(netlist_path)
     root = tree.getroot()
-    print(root)
+
+    source_tags = root.findall("./design/source")
+    assert len(source_tags) == 1
+    assert source_tags[0].text is not None
+    netlist.source = Path(source_tags[0].text)
+
+    comp_tags = root.findall("./components/comp")
+    netlist.components = dict()
+    for comp_tag in comp_tags:
+        component = Component()
+
+        component_ref = comp_tag.get("ref")
+        assert component_ref is not None
+        component.ref = ComponentRef(component_ref)
+
+        sheetpath_tags = comp_tag.findall("./sheetpath")
+        assert len(sheetpath_tags) == 1
+        sheetpath = sheetpath_tags[0].get("names")
+        assert sheetpath is not None
+        component.sheetpath = SheetPath(sheetpath)
+
+        field_tags = comp_tag.findall("./fields/field")
+        component.fields = dict()
+        for field_tag in field_tags:
+            field_name = field_tag.get("name")
+            assert field_name is not None
+            field_value = field_tag.text
+
+            assert field_name not in component.fields
+            # Default to empty string.
+            component.fields[field_name] = "" if field_value is None else field_value
+
+        assert component.ref not in netlist.components
+        netlist.components[component.ref] = component
+
+    net_tags = root.findall("./nets/net")
+    netlist.nets = set()
+    for net_tag in net_tags:
+        net = Net()
+
+        node_tags = net_tag.findall("./node")
+        net.nodes = set()
+        for node_tag in node_tags:
+            node = Node()
+
+            ref = node_tag.get("ref")
+            assert ref is not None
+            node.ref = ComponentRef(ref)
+
+            pin = node_tag.get("pin")
+            assert pin is not None
+            node.pin = NodePinName(pin)
+
+            pinfunction = node_tag.get("pinfunction")
+            node.pinfunction = NodePinFunction(
+                "" if pinfunction is None else pinfunction
+            )
+
+            # TODO: this assert doesn't actually do anything
+            assert node not in net.nodes
+            net.nodes.add(node)
+
+        # TODO: this assert doesn't actually do anything
+        assert net not in netlist.nets
+        netlist.nets.add(net)
+
+    return netlist
 
 
 def stringify_snippet_map(snippet_map: SnippetMap) -> str:
+    print(snippet_map)
+    # TODO
     pass
 
 
@@ -319,7 +430,7 @@ def main() -> None:
     if len(sys.argv) != 3:
         print(
             "Provide two arguments: the input file path and the root snippet name",
-            sys.stderr,
+            file=sys.stderr,
         )
         sys.exit(1)
     netlist_path = Path(sys.argv[1])
