@@ -339,6 +339,7 @@ def gen_snippet_map(netlist: Netlist, root_snippet_name: SnippetName) -> Snippet
     for net in snippet_netlist:
         # Some nets contain a root snippet pin, other don't.
         root_snippet_pin_name: SnippetPinName | None = None
+        skip_net = False
         for snippet_name, snippet_pin_name in net:
             # Does this pin belong to the root snippet?
             if snippet_name == root_snippet_name:
@@ -349,8 +350,12 @@ def gen_snippet_map(netlist: Netlist, root_snippet_name: SnippetName) -> Snippet
                         file=sys.stderr,
                     )
                     root_snippet_pin_name = None
+                    skip_net = True
                     break
                 root_snippet_pin_name = snippet_pin_name
+
+        if skip_net:
+            continue
 
         for snippet_name, snippet_pin_name in net:
             # Does this pin belong to the root snippet?
@@ -362,6 +367,10 @@ def gen_snippet_map(netlist: Netlist, root_snippet_name: SnippetName) -> Snippet
             assert snippet_pin_name not in snippets_lookup[snippet_name].pins
             # Because we only do this when this isn't a root snippet, all pins of the root snippet are connected to None.
             snippets_lookup[snippet_name].pins[snippet_pin_name] = root_snippet_pin_name
+
+    for snippet in snippets_lookup.values():
+        if len(snippet.pins) == 0:
+            print(f"Warning: The snippet {snippet.name} has no pins.", file=sys.stderr)
 
     snippet_map.snippets = {
         snippet
@@ -496,7 +505,9 @@ def stringify_snippet_map(snippet_map: SnippetMap) -> bytes:
         xml_snippets.append(xml_snippet)
 
     ET.indent(root, space="    ", level=0)
-    return ET.tostring(root, encoding="utf-8", method="xml", xml_declaration=True)
+    return bytes(
+        ET.tostring(root, encoding="utf-8", method="xml", xml_declaration=True)
+    )
 
 
 def main() -> None:
