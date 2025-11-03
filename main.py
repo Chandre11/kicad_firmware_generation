@@ -9,6 +9,7 @@ SNIPPET_TYPE_FIELD_NAME = "SnippetType"
 SNIPPET_PIN_FIELD_PREFIX = "SnippetPin"
 SNIPPET_MAP_FIELD_PREFIX = "SnippetMapField"
 TOOL_NAME = "kicad_snippet_mapper v0.1.0"
+XML_WARNING = "WARNING: This file has been automatically generated. Do not edit!"
 
 ComponentRef = NewType("ComponentRef", str)
 SheetPath = NewType("SheetPath", str)
@@ -447,7 +448,7 @@ def parse_netlist(netlist_path: Path) -> Netlist:
     return netlist
 
 
-def stringify_snippet(snippet: Snippet, tag_name: str) -> ET.Element:
+def xmlify_snippet(snippet: Snippet, tag_name: str) -> ET.Element:
     root = ET.Element(tag_name)
     root.set("name", snippet.name)
     root.set("type", snippet.type_name)
@@ -470,8 +471,10 @@ def stringify_snippet(snippet: Snippet, tag_name: str) -> ET.Element:
     return root
 
 
-def stringify_snippet_map(snippet_map: SnippetMap) -> ET.Element:
+def stringify_snippet_map(snippet_map: SnippetMap) -> bytes:
     root = ET.Element("snippetMap")
+    warning_comment = ET.Comment(XML_WARNING)
+    root.append(warning_comment)
 
     netlist = ET.SubElement(root, "netlist")
     source = ET.SubElement(netlist, "source")
@@ -481,7 +484,7 @@ def stringify_snippet_map(snippet_map: SnippetMap) -> ET.Element:
     tool = ET.SubElement(netlist, "tool")
     tool.text = snippet_map.tool
 
-    root_snippet = stringify_snippet(snippet_map.root_snippet, "rootSnippet")
+    root_snippet = xmlify_snippet(snippet_map.root_snippet, "rootSnippet")
     root.append(root_snippet)
 
     xml_snippets = ET.SubElement(root, "snippet")
@@ -489,11 +492,11 @@ def stringify_snippet_map(snippet_map: SnippetMap) -> ET.Element:
     snippets = list(snippet_map.snippets)
     snippets.sort(key=lambda s: s.name)
     for snippet in snippets:
-        xml_snippet = stringify_snippet(snippet, "snippet")
+        xml_snippet = xmlify_snippet(snippet, "snippet")
         xml_snippets.append(xml_snippet)
 
     ET.indent(root, space="    ", level=0)
-    return root
+    return ET.tostring(root, encoding="utf-8", method="xml", xml_declaration=True)
 
 
 def main() -> None:
@@ -507,7 +510,7 @@ def main() -> None:
     root_snippet_name = SnippetName(sys.argv[2])
     netlist = parse_netlist(netlist_path)
     snippet_map = gen_snippet_map(netlist, root_snippet_name)
-    ET.dump(stringify_snippet_map(snippet_map))
+    sys.stdout.buffer.write(stringify_snippet_map(snippet_map))
 
 
 if __name__ == "__main__":
