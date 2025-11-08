@@ -37,6 +37,10 @@ def stringify_snippet_id(id: SnippetIdentifier) -> str:
     return f"{id[0]}/{id[1]}"
 
 
+class Sheet:
+    path: SheetPath
+
+
 class Component:
     ref: ComponentRef
     sheetpath: SheetPath
@@ -65,6 +69,7 @@ class Net:
 
 class Netlist:
     source: Path
+    sheets: Set[Sheet]
     # Map component's ref to component.
     components: Dict[ComponentRef, Component]
     nets: Set[Net]
@@ -418,6 +423,52 @@ def gen_snippet_map(
     return snippet_map
 
 
+# There are a few stupid things one can do with a netlist.
+# This function ensures the electrical engineer didn't do such things and exits otherwise.
+def check_netlist_structure(netlist: Netlist) -> None:
+    sheet_paths: Set[SheetPath] = set()
+    # The first element is required path and second is the requiring path.
+    required_paths: Set[Tuple[SheetPath, SheetPath]] = set()
+
+    for sheet in netlist.sheets:
+        # The root sheet has path `/`.
+        # Any other sheet has a path like `/asfd/`.
+        assert len(sheet.path) >= 1
+        assert sheet.path[0] == "/"
+        assert sheet.path[-1] == "/"
+
+        if sheet.path in sheet_paths:
+            print(
+                f"Error: two sheets have the same path {sheet.path}.",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+        sheet_paths.add(sheet.path)
+
+        nodes = sheet.path.split("/")
+        print(nodes, file=sys.stderr)
+        assert len(nodes) > 0
+        if len(nodes) > 0:
+            required_paths.add((
+                SheetPath("/".join(nodes[0:-2]) + "/"),
+                sheet.path,
+            ))
+
+    for required_path, requiring_path in required_paths:
+        if required_path not in sheet_paths:
+            # TODO: read the schematics file directly and figure this out perfectly.
+            print(
+                f"Warning: The the last node of sheet path {requiring_path} uses the character `/`. "
+                "This is not allowed because then separating path nodes isn't possible. "
+                f"The script knows this because it didn't find {required_path}. ",
+                "You need to fix this as this should be an error! ",
+                "Though, this is a warning because there are situations in which the script doesn't notice the user's stupidity. ",
+                "You need to watch out for this yourself.",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+
+
 def parse_netlist(netlist_path: Path) -> Netlist:
     netlist = Netlist()
 
@@ -428,6 +479,15 @@ def parse_netlist(netlist_path: Path) -> Netlist:
     assert len(source_tags) == 1
     assert source_tags[0].text is not None
     netlist.source = Path(source_tags[0].text)
+
+    netlist.sheets = set()
+    sheet_tags = root.findall("./design/sheet")
+    for sheet_tag in sheet_tags:
+        path = sheet_tag.get("name")
+        assert path is not None
+        sheet = Sheet()
+        sheet.path = SheetPath(path)
+        netlist.sheets.add(sheet)
 
     comp_tags = root.findall("./components/comp")
     netlist.components = dict()
@@ -549,7 +609,7 @@ def get_snippet_identifier(in_str: str) -> SnippetIdentifier:
     idx = in_str.rfind("/")
     if "/" not in in_str:
         print(
-            "Error: snippet identifier must contain at least one /",
+            "Error: snippet identifier must contain at least one `/`.",
             file=sys.stderr,
         )
         sys.exit(1)
@@ -569,6 +629,7 @@ def main() -> None:
     netlist_path = Path(sys.argv[1])
     root_snippet_identifier = get_snippet_identifier(sys.argv[2])
     netlist = parse_netlist(netlist_path)
+    check_netlist_structure(netlist)
     snippet_map = gen_snippet_map(netlist, root_snippet_identifier)
     sys.stdout.buffer.write(stringify_snippet_map(snippet_map))
 
