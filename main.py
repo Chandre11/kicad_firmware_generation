@@ -446,7 +446,6 @@ def check_netlist_structure(netlist: Netlist) -> None:
         sheet_paths.add(sheet.path)
 
         nodes = sheet.path.split("/")
-        print(nodes, file=sys.stderr)
         assert len(nodes) > 0
         if len(nodes) > 0:
             required_paths.add((
