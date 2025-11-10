@@ -16,7 +16,9 @@ from snippet_map.snippet_types import (
 class RawSnippet:
     path: SnippetPath
     type_name: SnippetType
-    # Map key to value.
+    """
+    Map key to value.
+    """
     snippet_map_fields: Dict[str, str]
 
     components: Set[Component]
@@ -31,13 +33,19 @@ class RawSnippet:
         )
 
 
-# mapping from snippet name to the info we can directly pull from the KiCad netlist
+"""
+mapping from snippet name to the info we can directly pull from the KiCad netlist
+"""
 SnippetsLookup = NewType("SnippetsLookup", Dict[SnippetIdentifier, RawSnippet])
-# mapping from component ref to snippet name
+"""
+mapping from component ref to snippet name
+"""
 SnippetsReverseLookup = NewType(
     "SnippetsReverseLookup", Dict[ComponentRef, SnippetIdentifier]
 )
-# For each snippet this resolves the pins global identifier to the explicitly chosen pin name.
+"""
+For each snippet this resolves the pins global identifier to the explicitly chosen pin name.
+"""
 SnippetPinNameLookups = NewType(
     "SnippetPinNameLookups",
     Dict[SnippetIdentifier, Dict[GlobalPinIdentifier, SnippetPinName]],

@@ -4,7 +4,9 @@ from typing import Dict, NewType, Set, Tuple
 ComponentRef = NewType("ComponentRef", str)
 SheetPath = NewType("SheetPath", str)
 NodePinName = NewType("NodePinName", str)
-# globally unique descriptor for a pin
+"""
+globally unique descriptor for a pin
+"""
 GlobalPinIdentifier = NewType("GlobalPinIdentifier", Tuple[ComponentRef, NodePinName])
 NodePinFunction = NewType("NodePinFunction", str)
 
@@ -22,8 +24,11 @@ class Component:
         return f"Component(ref={self.ref!r}, sheetpath={self.sheetpath!r}, fields={list(self.fields.keys())!r})"
 
 
-# a pin on a component that is connected to some net(s)
 class Node:
+    """
+    a pin on a component that is connected to some net(s)
+    """
+
     ref: ComponentRef
     pin: NodePinName
     pinfunction: NodePinFunction
@@ -42,7 +47,9 @@ class Net:
 class Netlist:
     source: Path
     sheets: Set[Sheet]
-    # Map component's ref to component.
+    """
+    Map component's ref to component.
+    """
     components: Dict[ComponentRef, Component]
     nets: Set[Net]
 

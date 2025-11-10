@@ -39,7 +39,7 @@ SNIPPET_MAP_FIELD_PREFIX = "SnippetMapField"
 TOOL_NAME = "kicad_snippet_mapper v0.1.0"
 
 
-def group_components_by_snippet(
+def _group_components_by_snippet(
     netlist: Netlist,
 ) -> Tuple[SnippetsLookup, SnippetsReverseLookup]:
     snippets = SnippetsLookup(dict())
@@ -107,7 +107,7 @@ def group_components_by_snippet(
 
 
 # Snippets without a explicit naming don't appear in this dict.
-def get_explicit_pin_name_lookups(
+def _get_explicit_pin_name_lookups(
     snippets_lookup: SnippetsLookup,
 ) -> SnippetPinNameLookups:
     explicit_pin_namings = SnippetPinNameLookups(dict())
@@ -155,12 +155,12 @@ def get_explicit_pin_name_lookups(
 # The KiCad netlist connects pins on components to other pins on other components.
 # This function converts that netlist into a netlist that connects pins on snippets to other pins on other snippets.
 # The names of the pins are the SnippetPin names and not the KiCad pin names any longer.
-def convert_netlist(
+def _convert_netlist(
     netlist: Netlist,
     snippets_lookup: SnippetsLookup,
     snippets_reverse_lookup: SnippetsReverseLookup,
 ) -> SnippetNetList:
-    explicit_pin_name_lookups = get_explicit_pin_name_lookups(snippets_lookup)
+    explicit_pin_name_lookups = _get_explicit_pin_name_lookups(snippets_lookup)
 
     # We only use this to check that no two components have the same global snippet pin identifier.
     global_snippet_pin_to_component: Dict[GlobalSnippetPinIdentifier, ComponentRef] = (
@@ -215,11 +215,11 @@ def convert_netlist(
     return snippet_netlist
 
 
-def gen_snippet_map(
+def _gen_snippet_map(
     netlist: Netlist, root_snippet_identifier: SnippetIdentifier
 ) -> SnippetMap:
-    raw_snippets_lookup, snippets_reverse_lookup = group_components_by_snippet(netlist)
-    snippet_netlist = convert_netlist(
+    raw_snippets_lookup, snippets_reverse_lookup = _group_components_by_snippet(netlist)
+    snippet_netlist = _convert_netlist(
         netlist, raw_snippets_lookup, snippets_reverse_lookup
     )
 
@@ -316,7 +316,7 @@ def gen_snippet_map(
 
 # There are a few stupid things one can do with a netlist.
 # This function ensures the electrical engineer didn't do such things and exits otherwise.
-def check_netlist_structure(netlist: Netlist) -> None:
+def _check_netlist_structure(netlist: Netlist) -> None:
     sheet_paths: Set[SheetPath] = set()
     # The first element is required path and second is the requiring path.
     required_paths: Set[Tuple[SheetPath, SheetPath]] = set()
@@ -340,7 +340,7 @@ def check_netlist_structure(netlist: Netlist) -> None:
         assert len(nodes) > 0
         if len(nodes) > 0:
             required_paths.add((
-                SheetPath("/".join(nodes[0:-2]) + "/"),
+                SheetPath("/".join(nodes[:-2]) + "/"),
                 sheet.path,
             ))
 
@@ -359,7 +359,7 @@ def check_netlist_structure(netlist: Netlist) -> None:
             sys.exit(1)
 
 
-def get_snippet_identifier(in_str: str) -> SnippetIdentifier:
+def _get_snippet_identifier(in_str: str) -> SnippetIdentifier:
     idx = in_str.rfind("/")
     if "/" not in in_str:
         print(
@@ -381,10 +381,10 @@ def main() -> None:
         )
         sys.exit(1)
     netlist_path = Path(sys.argv[1])
-    root_snippet_identifier = get_snippet_identifier(sys.argv[2])
+    root_snippet_identifier = _get_snippet_identifier(sys.argv[2])
     netlist = parse_netlist(netlist_path)
-    check_netlist_structure(netlist)
-    snippet_map = gen_snippet_map(netlist, root_snippet_identifier)
+    _check_netlist_structure(netlist)
+    snippet_map = _gen_snippet_map(netlist, root_snippet_identifier)
     sys.stdout.buffer.write(stringify_snippet_map(snippet_map))
 
 

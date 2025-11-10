@@ -4,6 +4,43 @@ from pathlib import Path
 from jinja2 import Environment, FileSystemLoader
 
 from snippet_map.snippet_map_xml import parse_snippet_map
+from snippet_map.snippet_types import (
+    SnippetMap,
+    SnippetPath,
+    split_snippet_path,
+)
+from code_gen.snippet_sheet import SnippetSheet
+
+
+def _ensure_snippet_sheet_exists(path: SnippetPath, root: SnippetSheet) -> SnippetSheet:
+    assert len(path) >= 1
+    assert path[0] == "/"
+
+    snippet_sheet = root
+    # skip the root node
+    for node in split_snippet_path(path)[1:]:
+        if node not in snippet_sheet.children:
+            child_snippet_sheet = SnippetSheet()
+            child_snippet_sheet.children = dict()
+            child_snippet_sheet.parent = snippet_sheet
+            child_snippet_sheet.snippets = dict()
+            snippet_sheet.children[node] = child_snippet_sheet
+        snippet_sheet = snippet_sheet.children[node]
+        assert snippet_sheet is not None
+    return snippet_sheet
+
+
+def _get_snippet_sheets(snippet_map: SnippetMap) -> SnippetSheet:
+    root = SnippetSheet()
+    root.children = dict()
+    root.parent = None
+    root.snippets = dict()
+
+    for snippet in snippet_map.snippets:
+        snippet_sheet = _ensure_snippet_sheet_exists(snippet.path, root)
+        assert snippet.type_name not in snippet_sheet.snippets
+        snippet_sheet.snippets[snippet.type_name] = snippet
+    return root
 
 
 def main() -> None:
@@ -26,11 +63,24 @@ def main() -> None:
         sys.exit(1)
     template_name = str(template_path.relative_to(template_env_path))
 
-    parse_snippet_map(snippet_map_path)
+    snippet_map = parse_snippet_map(snippet_map_path)
+    root_snippet_sheet = _get_snippet_sheets(snippet_map)
 
-    env = Environment(loader=FileSystemLoader(template_env_path, followlinks=True))
+    env = Environment(
+        loader=FileSystemLoader(
+            template_env_path,
+            followlinks=True,
+        ),
+        trim_blocks=True,
+        lstrip_blocks=True,
+    )
     template = env.get_template(template_name)
-    print(template.render(test="Hello World!"))
+    print(
+        template.render(
+            snippet_map=snippet_map,
+            root_snippet_sheet=root_snippet_sheet,
+        )
+    )
 
 
 if __name__ == "__main__":

@@ -1,10 +1,13 @@
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, FrozenSet, NewType, Set, Tuple
+from typing import Dict, FrozenSet, List, NewType, Set, Tuple
 
-# The path's nodes are separated with `/`.
-# There must be a leading slash and no trailing slash.
+"""
+The path's nodes are separated with `/`.
+There must be a leading slash and no trailing slash.
+"""
 SnippetPath = NewType("SnippetPath", str)
+SnippetPathNode = NewType("SnippetPathNode", str)
 SnippetType = NewType("SnippetType", str)
 SnippetIdentifier = NewType("SnippetIdentifier", Tuple[SnippetPath, SnippetType])
 SnippetPinName = NewType("SnippetPinName", str)
@@ -12,7 +15,9 @@ SnippetPinName = NewType("SnippetPinName", str)
 GlobalSnippetPinIdentifier = NewType(
     "GlobalSnippetPinIdentifier", Tuple[SnippetIdentifier, SnippetPinName]
 )
-# These pins are connected.
+"""
+These pins are connected.
+"""
 MutableSnippetNet = NewType("MutableSnippetNet", Set[GlobalSnippetPinIdentifier])
 SnippetNet = NewType("SnippetNet", FrozenSet[GlobalSnippetPinIdentifier])
 SnippetNetList = NewType("SnippetNetList", Set[SnippetNet])
@@ -21,10 +26,14 @@ SnippetNetList = NewType("SnippetNetList", Set[SnippetNet])
 class Snippet:
     path: SnippetPath
     type_name: SnippetType
-    # Map key to value.
+    """
+    Map key to value.
+    """
     snippet_map_fields: Dict[str, str]
-    # Map snippet pin name to connected root snippet pin name.
-    # If this is the root snippet the value is always None.
+    """
+    Map snippet pin name to connected root snippet pin name.
+    If this is the root snippet the value is always None.
+    """
     pins: Dict[SnippetPinName, SnippetPinName | None]
 
     def get_id(self) -> SnippetIdentifier:
@@ -55,3 +64,9 @@ class SnippetMap:
 
 def stringify_snippet_id(id: SnippetIdentifier) -> str:
     return f"{id[0]}/{id[1]}"
+
+
+def split_snippet_path(path: SnippetPath) -> List[SnippetPathNode]:
+    assert len(path) >= 1
+    assert path[0] == "/"
+    return [SnippetPathNode(node_str) for node_str in path.split("/")]
