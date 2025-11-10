@@ -1,3 +1,7 @@
+ICA_EPS_Distribution_netlist.xml
+ICA_EPS_Distribution_snippet_map.xml
+board.h
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
