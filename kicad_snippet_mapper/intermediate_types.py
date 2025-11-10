@@ -1,7 +1,11 @@
 from typing import Dict, NewType, Set
 
-from .kicad_types import Component, ComponentRef, GlobalPinIdentifier
-from ..snippet_map.snippet_types import (
+from kicad_snippet_mapper.kicad_types import (
+    Component,
+    ComponentRef,
+    GlobalPinIdentifier,
+)
+from snippet_map.snippet_types import (
     SnippetIdentifier,
     SnippetPath,
     SnippetPinName,

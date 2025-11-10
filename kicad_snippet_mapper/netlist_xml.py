@@ -1,7 +1,7 @@
 from pathlib import Path
 import xml.etree.ElementTree as ET
 
-from .kicad_types import (
+from kicad_snippet_mapper.kicad_types import (
     Component,
     ComponentRef,
     Net,

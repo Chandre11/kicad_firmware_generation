@@ -1,6 +1,7 @@
 import xml.etree.ElementTree as ET
+from pathlib import Path
 
-from .snippet_types import Snippet, SnippetIdentifier, SnippetMap
+from snippet_map.snippet_types import Snippet, SnippetIdentifier, SnippetMap
 
 XML_WARNING = "WARNING: This file has been automatically generated. Do not edit!"
 
