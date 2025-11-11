@@ -255,7 +255,6 @@ def _gen_snippet_map(
         snippet.path = raw_snippet.path
         snippet.type_name = raw_snippet.type_name
         snippet.snippet_map_fields = raw_snippet.snippet_map_fields
-        print(snippet.snippet_map_fields, file=sys.stderr)
         snippet.pins = dict()
         snippets_lookup[SnippetIdentifier((snippet.path, snippet.type_name))] = snippet
 
