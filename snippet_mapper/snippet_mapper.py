@@ -56,6 +56,8 @@ def _gen_snippet_map(
                         "The entire net these pins are connected to will not be part of the snippet map.",
                         file=sys.stderr,
                     )
+                    # Remove that pin from the root snippet.
+                    netlist.snippets[snippet_identifier].pins.pop(snippet_pin_name)
                     root_snippet_pin_name = None
                     break
                 root_snippet_pin_name = snippet_pin_name
