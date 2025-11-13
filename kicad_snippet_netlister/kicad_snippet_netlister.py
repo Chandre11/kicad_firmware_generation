@@ -3,29 +3,26 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, Set, Tuple
 
-from kicad_snippet_mapper.intermediate_types import (
+from kicad_snippet_netlister.kicad_types import (
     RawSnippet,
     SnippetPinNameLookups,
-    SnippetsLookup,
+    RawSnippetLookup,
     SnippetsReverseLookup,
+    KiCadComponentRef,
+    GlobalKiCadPinIdentifier,
+    KiCadNetlist,
+    KiCadNodePinName,
+    KiCadSheetPath,
 )
-from kicad_snippet_mapper.kicad_types import (
-    ComponentRef,
-    GlobalPinIdentifier,
-    Netlist,
-    NodePinName,
-    SheetPath,
-)
-from kicad_snippet_mapper.netlist_xml import parse_netlist
-from snippet_map.snippet_map_xml import stringify_snippet_map
-from snippet_map.snippet_types import (
+from kicad_snippet_netlister.kicad_netlist_xml import parse_kicad_netlist
+from common_types.snippet_xml import stringify_snippet_netlist
+from common_types.snippet_types import (
     GlobalSnippetPinIdentifier,
     MutableSnippetNet,
     Snippet,
     SnippetIdentifier,
-    SnippetMap,
     SnippetNet,
-    SnippetNetList,
+    SnippetNetlist,
     SnippetPath,
     SnippetPinName,
     SnippetType,
@@ -36,13 +33,13 @@ SNIPPET_TYPE_FIELD_NAME = "SnippetType"
 SNIPPET_PIN_FIELD_PREFIX = "SnippetPin"
 SNIPPET_MAP_FIELD_PREFIX = "SnippetMapField"
 # TODO: set this properly
-TOOL_NAME = "kicad_snippet_mapper v0.1.0"
+TOOL_NAME = "kicad_snippet_netlister v0.1.0"
 
 
 def _group_components_by_snippet(
-    netlist: Netlist,
-) -> Tuple[SnippetsLookup, SnippetsReverseLookup]:
-    snippets = SnippetsLookup(dict())
+    netlist: KiCadNetlist,
+) -> Tuple[RawSnippetLookup, SnippetsReverseLookup]:
+    snippets = RawSnippetLookup(dict())
     reverse_lookup = SnippetsReverseLookup(dict())
     for component in netlist.components.values():
         if SNIPPET_TYPE_FIELD_NAME not in component.fields:
@@ -108,7 +105,7 @@ def _group_components_by_snippet(
 
 # Snippets without a explicit naming don't appear in this dict.
 def _get_explicit_pin_name_lookups(
-    snippets_lookup: SnippetsLookup,
+    snippets_lookup: RawSnippetLookup,
 ) -> SnippetPinNameLookups:
     explicit_pin_namings = SnippetPinNameLookups(dict())
     for snippet_identifier, raw_snippet in snippets_lookup.items():
@@ -121,8 +118,10 @@ def _get_explicit_pin_name_lookups(
                     continue
 
                 # After the SnippetPin prefix comes the pin shown in KiCad that belongs to the component.
-                node_pin_name = NodePinName(field_name[len(SNIPPET_PIN_FIELD_PREFIX) :])
-                global_pin_identifier = GlobalPinIdentifier((
+                node_pin_name = KiCadNodePinName(
+                    field_name[len(SNIPPET_PIN_FIELD_PREFIX) :]
+                )
+                global_pin_identifier = GlobalKiCadPinIdentifier((
                     component.ref,
                     node_pin_name,
                 ))
@@ -155,27 +154,46 @@ def _get_explicit_pin_name_lookups(
 # The KiCad netlist connects pins on components to other pins on other components.
 # This function converts that netlist into a netlist that connects pins on snippets to other pins on other snippets.
 # The names of the pins are the SnippetPin names and not the KiCad pin names any longer.
-def _convert_netlist(
-    netlist: Netlist,
-    snippets_lookup: SnippetsLookup,
+def _gen_snippet_netlist(
+    netlist: KiCadNetlist,
+    raw_snippets_lookup: RawSnippetLookup,
     snippets_reverse_lookup: SnippetsReverseLookup,
-) -> SnippetNetList:
-    explicit_pin_name_lookups = _get_explicit_pin_name_lookups(snippets_lookup)
+) -> SnippetNetlist:
+    explicit_pin_name_lookups = _get_explicit_pin_name_lookups(raw_snippets_lookup)
 
     # We only use this to check that no two components have the same global snippet pin identifier.
-    global_snippet_pin_to_component: Dict[GlobalSnippetPinIdentifier, ComponentRef] = (
-        dict()
-    )
+    global_snippet_pin_to_component: Dict[
+        GlobalSnippetPinIdentifier, KiCadComponentRef
+    ] = dict()
 
-    snippet_netlist = SnippetNetList(set())
+    snippet_netlist = SnippetNetlist()
+    snippet_netlist.source = netlist.source
+    snippet_netlist.date = datetime.now()
+    snippet_netlist.tool = TOOL_NAME
+
+    # Create representations for all snippets without their pins.
+    # same as raw_snippets_lookup but this time with the final Snippet class
+    snippets_lookup: Dict[SnippetIdentifier, Snippet] = dict()
+    for raw_snippet in raw_snippets_lookup.values():
+        snippet = Snippet()
+        snippet.path = raw_snippet.path
+        snippet.type_name = raw_snippet.type_name
+        snippet.snippet_map_fields = raw_snippet.snippet_map_fields
+        # We populate the pins when we loop over all nets.
+        snippet.pins = dict()
+        snippet_id = raw_snippet.get_id()
+        assert snippet_id not in snippets_lookup
+        snippets_lookup[snippet_id] = snippet
+
+    snippet_netlist.nets = set()
     for net in netlist.nets:
         snippet_net = MutableSnippetNet(set())
-        for node in net.nodes:
+        for node in net:
             if node.ref not in snippets_reverse_lookup:
                 # The node does not belong to a component that belongs to a snippet.
                 continue
             snippet_identifier = snippets_reverse_lookup[node.ref]
-            global_pin_identifier = GlobalPinIdentifier((node.ref, node.pin))
+            global_pin_identifier = GlobalKiCadPinIdentifier((node.ref, node.pin))
 
             # Figure out what name this pin has.
             snippet_pin_name: SnippetPinName
@@ -191,6 +209,10 @@ def _convert_netlist(
                 # When the user didn't define any SnippetPin names for at all we use a fallback:
                 # We consider all pins that belong to components that belong to the snippet as pins of the snippet.
                 snippet_pin_name = SnippetPinName(node.pinfunction)
+
+            # Assign None because we don't have any idea what the root snippet could be.
+            snippets_lookup[snippet_identifier].pins[snippet_pin_name] = None
+
             # This uniquely identifies the pin in the entire snippet map.
             global_snippet_pin_identifier = GlobalSnippetPinIdentifier((
                 snippet_identifier,
@@ -211,115 +233,26 @@ def _convert_netlist(
 
             # This might very well be the only pin in the snippet net.
             snippet_net.add(global_snippet_pin_identifier)
-        snippet_netlist.add(SnippetNet(frozenset(snippet_net)))
-    return snippet_netlist
+        snippet_netlist.nets.add(SnippetNet(frozenset(snippet_net)))
 
+    snippet_netlist.snippets = snippets_lookup
 
-def _gen_snippet_map(
-    netlist: Netlist, root_snippet_identifier: SnippetIdentifier
-) -> SnippetMap:
-    raw_snippets_lookup, snippets_reverse_lookup = _group_components_by_snippet(netlist)
-    snippet_netlist = _convert_netlist(
-        netlist, raw_snippets_lookup, snippets_reverse_lookup
-    )
-
-    # general metadata
-    snippet_map = SnippetMap()
-    snippet_map.source = netlist.source
-    snippet_map.date = datetime.now()
-    snippet_map.tool = TOOL_NAME
-
-    if root_snippet_identifier not in raw_snippets_lookup:
-        all_snippet_identifiers = ", ".join([
-            f"{stringify_snippet_id(snippet.get_id())}"
-            for snippet in raw_snippets_lookup.values()
-        ])
-        all_snippet_print = (
-            f"There are no snippets. Define them by specifying at least one component with the {SNIPPET_TYPE_FIELD_NAME} field."
-            if len(all_snippet_identifiers) == 0
-            else f"These snippets exist: {all_snippet_identifiers}"
-        )
-        print(
-            f"Error: Didn't find a root snippet with identifier {stringify_snippet_id(root_snippet_identifier)}.\n{all_snippet_print}",
-            file=sys.stderr,
-        )
-        sys.exit(1)
-
-    # Create representations for all snippets without their pins.
-    # This includes the root snippet.
-    # same as raw_snippets_lookup but this time with the final Snippet class
-    snippets_lookup: Dict[SnippetIdentifier, Snippet] = dict()
-    for raw_snippet in raw_snippets_lookup.values():
-        snippet = Snippet()
-        snippet.path = raw_snippet.path
-        snippet.type_name = raw_snippet.type_name
-        snippet.snippet_map_fields = raw_snippet.snippet_map_fields
-        snippet.pins = dict()
-        snippets_lookup[SnippetIdentifier((snippet.path, snippet.type_name))] = snippet
-
-    # Figure out what snippets are connected how.
-    for net in snippet_netlist:
-        # Some nets contain a root snippet pin, other don't.
-        root_snippet_pin_name: SnippetPinName | None = None
-        skip_net = False
-        for snippet_identifier, snippet_pin_name in net:
-            # Does this pin belong to the root snippet?
-            if snippet_identifier == root_snippet_identifier:
-                if root_snippet_pin_name is not None:
-                    print(
-                        f"Warning: At least two pins of the root snippet {stringify_snippet_id(root_snippet_identifier)}, {snippet_pin_name} and {root_snippet_pin_name} are connected together.\n"
-                        "The entire net these pins are connected to will not be part of the snippet map.",
-                        file=sys.stderr,
-                    )
-                    root_snippet_pin_name = None
-                    skip_net = True
-                    break
-                root_snippet_pin_name = snippet_pin_name
-
-        if skip_net:
-            continue
-
-        for snippet_identifier, snippet_pin_name in net:
-            # Does this pin belong to the root snippet?
-            if snippet_identifier == root_snippet_identifier:
-                # We've already figured out what root pin this net is connected to.
-                # All we have to do is make sure the root snippet has this pin, too.
-                snippets_lookup[snippet_identifier].pins[snippet_pin_name] = None
-                continue
-            assert snippet_pin_name not in snippets_lookup[snippet_identifier].pins
-            # Because we only do this when this isn't a root snippet, all pins of the root snippet are connected to None.
-            snippets_lookup[snippet_identifier].pins[snippet_pin_name] = (
-                root_snippet_pin_name
-            )
-
-    for snippet in snippets_lookup.values():
+    for snippet in snippet_netlist.snippets.values():
         if len(snippet.pins) == 0:
             print(
                 f"Warning: The snippet {stringify_snippet_id(snippet.get_id())} has no pins.",
                 file=sys.stderr,
             )
 
-    snippet_map.snippets = {
-        snippet
-        for snippet in snippets_lookup.values()
-        if SnippetIdentifier((snippet.path, snippet.type_name))
-        != root_snippet_identifier
-    }
-    assert root_snippet_identifier not in {
-        SnippetIdentifier((snippet.path, snippet.type_name))
-        for snippet in snippet_map.snippets
-    }
-    snippet_map.root_snippet = snippets_lookup[root_snippet_identifier]
-
-    return snippet_map
+    return snippet_netlist
 
 
 # There are a few stupid things one can do with a netlist.
 # This function ensures the electrical engineer didn't do such things and exits otherwise.
-def _check_netlist_structure(netlist: Netlist) -> None:
-    sheet_paths: Set[SheetPath] = set()
+def _check_kicad_netlist_structure(netlist: KiCadNetlist) -> None:
+    sheet_paths: Set[KiCadSheetPath] = set()
     # The first element is required path and second is the requiring path.
-    required_paths: Set[Tuple[SheetPath, SheetPath]] = set()
+    required_paths: Set[Tuple[KiCadSheetPath, KiCadSheetPath]] = set()
 
     for sheet in netlist.sheets:
         # The root sheet has path `/`.
@@ -341,7 +274,7 @@ def _check_netlist_structure(netlist: Netlist) -> None:
         # Don't do this when we're already at the root.
         if len(nodes) > 2:
             required_paths.add((
-                SheetPath("/".join(nodes[:-1]) + "/"),
+                KiCadSheetPath("/".join(nodes[:-1]) + "/"),
                 sheet.path,
             ))
 
@@ -360,33 +293,25 @@ def _check_netlist_structure(netlist: Netlist) -> None:
             sys.exit(1)
 
 
-def _get_snippet_identifier(in_str: str) -> SnippetIdentifier:
-    idx = in_str.rfind("/")
-    if "/" not in in_str:
-        print(
-            "Error: snippet identifier must contain at least one `/`.",
-            file=sys.stderr,
-        )
-        sys.exit(1)
-    return SnippetIdentifier((
-        SnippetPath(in_str[0 : idx + 1]),
-        SnippetType(in_str[idx + 1 :]),
-    ))
-
-
 def main() -> None:
-    if len(sys.argv) != 3:
+    if len(sys.argv) != 2:
         print(
-            "Error: Provide two arguments: the input file path and the root snippet name.",
+            "Error: Provide one argument: the input KiCad netlist file (in the kicadxml format) path.",
             file=sys.stderr,
         )
         sys.exit(1)
-    netlist_path = Path(sys.argv[1])
-    root_snippet_identifier = _get_snippet_identifier(sys.argv[2])
-    netlist = parse_netlist(netlist_path)
-    _check_netlist_structure(netlist)
-    snippet_map = _gen_snippet_map(netlist, root_snippet_identifier)
-    sys.stdout.buffer.write(stringify_snippet_map(snippet_map))
+    kicad_netlist_path = Path(sys.argv[1])
+    kicad_netlist = parse_kicad_netlist(kicad_netlist_path)
+    _check_kicad_netlist_structure(kicad_netlist)
+
+    snippets_lookup, snippets_reverse_lookup = _group_components_by_snippet(
+        kicad_netlist
+    )
+
+    snippet_netlist = _gen_snippet_netlist(
+        kicad_netlist, snippets_lookup, snippets_reverse_lookup
+    )
+    sys.stdout.buffer.write(stringify_snippet_netlist(snippet_netlist))
 
 
 if __name__ == "__main__":

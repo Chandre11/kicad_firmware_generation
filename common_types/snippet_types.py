@@ -20,7 +20,6 @@ These pins are connected.
 """
 MutableSnippetNet = NewType("MutableSnippetNet", Set[GlobalSnippetPinIdentifier])
 SnippetNet = NewType("SnippetNet", FrozenSet[GlobalSnippetPinIdentifier])
-SnippetNetList = NewType("SnippetNetList", Set[SnippetNet])
 
 
 class Snippet:
@@ -60,6 +59,22 @@ class SnippetMap:
             f"tool={self.tool!r}, root_snippet={stringify_snippet_id(self.root_snippet.get_id())!r}, "
             f"snippets={len(self.snippets)})"
         )
+
+
+class SnippetNetlist:
+    """
+    Represent what snippets there are and how they are connected.
+    """
+
+    source: Path
+    date: datetime
+    tool: str
+
+    """
+    All snippets have pins with None set as the rootPinName
+    """
+    snippets: Dict[SnippetIdentifier, Snippet]
+    nets: Set[SnippetNet]
 
 
 def stringify_snippet_id(id: SnippetIdentifier) -> str:

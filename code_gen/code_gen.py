@@ -1,14 +1,12 @@
 import sys
 from pathlib import Path
-from typing import Dict, Set
 
 from jinja2 import Environment, FileSystemLoader
 
-from snippet_map.snippet_map_xml import parse_snippet_map
-from snippet_map.snippet_types import (
+from common_types.snippet_xml import parse_snippet_map
+from common_types.snippet_types import (
     SnippetMap,
     SnippetPath,
-    SnippetPinName,
     split_snippet_path,
 )
 from code_gen.snippet_sheet import SnippetSheet

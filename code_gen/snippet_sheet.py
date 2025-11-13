@@ -1,6 +1,6 @@
 from typing import Dict
 
-from snippet_map.snippet_types import Snippet, SnippetPathNode, SnippetType
+from common_types.snippet_types import Snippet, SnippetPathNode, SnippetType
 
 
 class SnippetSheet:

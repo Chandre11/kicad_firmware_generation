@@ -23,8 +23,9 @@ license-files = ["LICENSE"]
 keywords = []
 
 [tool.setuptools]
-packages = ["kicad_snippet_mapper", "code_gen", "snippet_map"]
+packages = ["kicad_snippet_netlister", "snippet_mapper", "code_gen", "common_types"]
 
 [project.scripts]
-kicad_snippet_mapper = "kicad_snippet_mapper.kicad_snippet_mapper:main"
-snippet_code_gen = "snippet_code_gen.snippet_code_gen:main"
+kicad_snippet_netlister = "kicad_snippet_netlister.kicad_snippet_netlister:main"
+snippet_mapper = "snippet_mapper.snippet_mapper:main"
+code_gen = "code_gen.code_gen:main"
