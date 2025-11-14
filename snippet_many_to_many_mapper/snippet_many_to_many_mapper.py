@@ -2,13 +2,14 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-from common_types.snippet_xml import stringify_snippet_map, parse_snippet_netlist
+from common_types.parse_xml import parse_snippet_netlist
 from common_types.snippet_types import (
     GlobalSnippetPinIdentifier,
+    OtherSnippetPinType,
     SnippetMap,
     SnippetNetlist,
-    OtherSnippetPinType,
 )
+from common_types.stringify_xml import stringify_snippet_map
 
 # TODO: set this properly
 TOOL_NAME = "snippet_many_to_many_mapper v0.1.0"

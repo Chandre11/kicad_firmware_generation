@@ -3,19 +3,6 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, Set, Tuple
 
-from kicad_snippet_netlister.kicad_types import (
-    RawSnippet,
-    SnippetPinNameLookups,
-    RawSnippetLookup,
-    SnippetsReverseLookup,
-    KiCadComponentRef,
-    GlobalKiCadPinIdentifier,
-    KiCadNetlist,
-    KiCadNodePinName,
-    KiCadSheetPath,
-)
-from kicad_snippet_netlister.kicad_netlist_xml import parse_kicad_netlist
-from common_types.snippet_xml import stringify_snippet_netlist
 from common_types.snippet_types import (
     GlobalSnippetPinIdentifier,
     MutableSnippetNet,
@@ -27,6 +14,19 @@ from common_types.snippet_types import (
     SnippetPinName,
     SnippetType,
     stringify_snippet_id,
+)
+from common_types.stringify_xml import stringify_snippet_netlist
+from kicad_snippet_netlister.kicad_netlist_xml import parse_kicad_netlist
+from kicad_snippet_netlister.kicad_types import (
+    GlobalKiCadPinIdentifier,
+    KiCadComponentRef,
+    KiCadNetlist,
+    KiCadNodePinName,
+    KiCadSheetPath,
+    RawSnippet,
+    RawSnippetLookup,
+    SnippetPinNameLookups,
+    SnippetsReverseLookup,
 )
 
 SNIPPET_TYPE_FIELD_NAME = "SnippetType"

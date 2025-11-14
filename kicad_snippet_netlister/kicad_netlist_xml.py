@@ -1,6 +1,6 @@
+import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Set
-import xml.etree.ElementTree as ET
 
 from kicad_snippet_netlister.kicad_types import (
     KiCadComponent,

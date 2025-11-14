@@ -3,13 +3,13 @@ from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader
 
-from common_types.snippet_xml import parse_one_to_many_snippet_map
+from code_gen.snippet_sheet import SnippetSheet
+from common_types.parse_xml import parse_one_to_many_snippet_map
 from common_types.snippet_types import (
     SnippetMap,
     SnippetPath,
     split_snippet_path,
 )
-from code_gen.snippet_sheet import SnippetSheet
 
 
 def _ensure_snippet_sheet_exists(path: SnippetPath, root: SnippetSheet) -> SnippetSheet:

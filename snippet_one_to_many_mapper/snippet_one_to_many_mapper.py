@@ -2,17 +2,18 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-from common_types.snippet_xml import stringify_snippet_map, parse_snippet_netlist
+from common_types.parse_xml import parse_snippet_netlist
 from common_types.snippet_types import (
+    OtherSnippetPinType,
     SnippetIdentifier,
     SnippetMap,
     SnippetNetlist,
     SnippetPath,
     SnippetPinName,
-    OtherSnippetPinType,
     SnippetType,
     stringify_snippet_id,
 )
+from common_types.stringify_xml import stringify_snippet_map
 
 SNIPPET_TYPE_FIELD_NAME = "SnippetType"
 # TODO: set this properly
