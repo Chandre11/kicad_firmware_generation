@@ -1,3 +1,5 @@
+import glob
+import re
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -10,26 +12,31 @@ from common_types.snippet_types import (
     SnippetIdentifier,
     SnippetMap,
     SnippetNetlist,
+    stringify_snippet_id,
 )
 from common_types.stringify_xml import stringify_snippet_map
 
 # TODO: set this properly
 TOOL_NAME = "snippet_many_to_many_mapper v0.1.0"
 
-SnippetPattern = NewType("SnippetPattern", str)
+SnippetGlob = NewType("SnippetGlob", re.Pattern[str])
+
+
+def _compile_snippet_glob(snippet_glob_str: str) -> SnippetGlob:
+    regex = glob.translate(snippet_glob_str, recursive=True, include_hidden=True)
+    return SnippetGlob(re.compile(regex))
 
 
 def _does_match_pattern(
-    pattern: SnippetPattern | None, snippet_id: SnippetIdentifier, when_none: bool
+    pattern: SnippetGlob | None, snippet_id: SnippetIdentifier, when_none: bool
 ) -> bool:
     if pattern is None:
         return when_none
-    # TODO
-    return True
+    return pattern.match(stringify_snippet_id(snippet_id)) is not None
 
 
 def _gen_many_to_many_snippet_map(
-    netlist: SnippetNetlist, root_snippet_pattern: SnippetPattern | None
+    netlist: SnippetNetlist, root_snippet_pattern: SnippetGlob | None
 ) -> SnippetMap:
     # general metadata
     snippet_map = SnippetMap()
@@ -65,14 +72,16 @@ def _gen_many_to_many_snippet_map(
 def main() -> None:
     if len(sys.argv) != 2 and len(sys.argv) != 3:
         print(
-            "Error: Provide one or two arguments: the input snippet netlist file path and optionally the root snippet pattern.",
+            "Error: Provide one or two arguments: the input snippet netlist file path and optionally the root snippet glob.",
             file=sys.stderr,
         )
         sys.exit(1)
     snippet_netlist_path = Path(sys.argv[1])
-    root_snippet_pattern = SnippetPattern(sys.argv[2]) if len(sys.argv) == 3 else None
+    root_snippet_glob = (
+        _compile_snippet_glob(sys.argv[2]) if len(sys.argv) == 3 else None
+    )
     snippet_netlist = parse_snippet_netlist(snippet_netlist_path)
-    snippet_map = _gen_many_to_many_snippet_map(snippet_netlist, root_snippet_pattern)
+    snippet_map = _gen_many_to_many_snippet_map(snippet_netlist, root_snippet_glob)
     sys.stdout.buffer.write(stringify_snippet_map(snippet_map))
 
 
