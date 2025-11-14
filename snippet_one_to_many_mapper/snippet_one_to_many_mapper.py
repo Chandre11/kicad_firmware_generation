@@ -15,7 +15,7 @@ from common_types.snippet_types import (
 
 SNIPPET_TYPE_FIELD_NAME = "SnippetType"
 # TODO: set this properly
-TOOL_NAME = "snippet_mapper v0.1.0"
+TOOL_NAME = "snippet_one_to_many_mapper v0.1.0"
 
 
 def _gen_snippet_map(

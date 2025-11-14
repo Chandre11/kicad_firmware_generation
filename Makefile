@@ -6,11 +6,11 @@ ICA_EPS_Distribution_netlist.xml: /home/chris/pluto_eps_distribution/ICA_EPS_Dis
 ICA_EPS_Distribution_snippet_netlist.xml: ICA_EPS_Distribution_netlist.xml
 	python3 -m kicad_snippet_netlister.kicad_snippet_netlister ICA_EPS_Distribution_netlist.xml > ICA_EPS_Distribution_snippet_netlist.xml
 
-ICA_EPS_Distribution_snippet_map.xml: ICA_EPS_Distribution_snippet_netlist.xml
-	python3 -m snippet_mapper.snippet_mapper ICA_EPS_Distribution_snippet_netlist.xml '/Controller/Controller' > ICA_EPS_Distribution_snippet_map.xml
+ICA_EPS_Distribution_snippet_one_to_many_map.xml: ICA_EPS_Distribution_snippet_netlist.xml
+	python3 -m snippet_one_to_many_mapper.snippet_one_to_many_mapper ICA_EPS_Distribution_snippet_netlist.xml '/Controller/Controller' > ICA_EPS_Distribution_snippet_one_to_many_map.xml
 
-board.h: ICA_EPS_Distribution_snippet_map.xml
-	python3 -m code_gen.code_gen ICA_EPS_Distribution_snippet_map.xml pluto_eps_templates/board.h.tmpl > board.h
+board.h: ICA_EPS_Distribution_snippet_one_to_many_map.xml
+	python3 -m code_gen.code_gen ICA_EPS_Distribution_snippet_one_to_many_map.xml pluto_eps_templates/board.h.tmpl > board.h
 
 clean:
-	rm -vf ICA_EPS_Distribution_netlist.xml ICA_EPS_Distribution_snippet_netlist.xml ICA_EPS_Distribution_snippet_map.xml board.h
+	rm -vf ICA_EPS_Distribution_netlist.xml ICA_EPS_Distribution_snippet_netlist.xml ICA_EPS_Distribution_snippet_one_to_many_map.xml board.h
