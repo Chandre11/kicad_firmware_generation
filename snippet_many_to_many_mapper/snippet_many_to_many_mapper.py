@@ -36,7 +36,8 @@ def _does_match_pattern(
 ) -> bool:
     if pattern is None:
         return when_none
-    return pattern.match(stringify_snippet_id(snippet_id)) is not None
+    found = pattern.match(stringify_snippet_id(snippet_id)) is not None
+    return found
 
 
 def _gen_many_to_many_snippet_map(
