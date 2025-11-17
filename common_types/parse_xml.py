@@ -77,7 +77,7 @@ def _parse_snippet(
 
                 other_pin_id = GlobalSnippetPinIdentifier((
                     SnippetIdentifier((
-                        SnippetPath(other_snippet_pin),
+                        SnippetPath(other_snippet_path),
                         SnippetType(other_snippet_type),
                     )),
                     SnippetPinName(other_snippet_pin),
@@ -205,6 +205,7 @@ def parse_many_to_many_snippet_map(snippet_map_path: Path) -> SnippetMap:
     root, snippet_map.source, snippet_map.date, snippet_map.tool = _parse_xml_root(
         snippet_map_path
     )
+    snippet_map.root_snippet = None
 
     snippets = root.findall("./snippets/snippet")
     snippet_map.snippets = {

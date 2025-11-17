@@ -4,7 +4,7 @@ import re
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import List, NewType, Set
+from typing import NewType, Set
 
 from common_types.parse_xml import parse_snippet_netlist
 from common_types.snippet_types import (
@@ -92,6 +92,7 @@ def _gen_many_to_many_snippet_map(
                 pin.add(
                     GlobalSnippetPinIdentifier((
                         SnippetIdentifier((
+                            # TODO: do this better
                             SnippetPath("/Simplified/"),
                             SnippetType("Away"),
                         )),
