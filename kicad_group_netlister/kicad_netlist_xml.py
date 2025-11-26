@@ -2,7 +2,7 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Set
 
-from kicad_snippet_netlister.kicad_types import (
+from kicad_group_netlister.kicad_types import (
     KiCadComponent,
     KiCadComponentRef,
     KiCadNet,

@@ -4,13 +4,13 @@ from typing import Set
 
 from jinja2 import Environment, FileSystemLoader
 
-from common_types.parse_xml import parse_many_to_many_snippet_map
-from common_types.snippet_types import (
-    Snippet,
-    compile_snippet_glob,
+from common_types.parse_xml import parse_many_to_many_group_map
+from common_types.group_types import (
+    Group,
+    compile_group_glob,
     does_match_pattern,
-    get_parent_snippet_path,
-    stringify_snippet_id,
+    get_parent_group_path,
+    stringify_group_id,
 )
 
 
@@ -44,7 +44,7 @@ def main() -> None:
             file=sys.stderr,
         )
         sys.exit(1)
-    snippet_map_path = Path(sys.argv[1])
+    group_map_path = Path(sys.argv[1])
     template_path = Path(sys.argv[2])
     template_env_path = (
         Path(sys.argv[3]) if len(sys.argv) == 4 else template_path.parent
@@ -57,15 +57,15 @@ def main() -> None:
         sys.exit(1)
     template_name = str(template_path.relative_to(template_env_path))
 
-    snippet_map = parse_many_to_many_snippet_map(snippet_map_path)
+    group_map = parse_many_to_many_group_map(group_map_path)
 
     # TODO: sort
-    def glob_snippets(glob_str: str) -> Set[Snippet]:
-        pattern = compile_snippet_glob(glob_str)
+    def glob_groups(glob_str: str) -> Set[Group]:
+        pattern = compile_group_glob(glob_str)
         return {
-            snippet
-            for snippet in snippet_map.snippets
-            if does_match_pattern(pattern, snippet.get_id())
+            group
+            for group in group_map.groups
+            if does_match_pattern(pattern, group.get_id())
         }
 
     env = Environment(
@@ -79,12 +79,12 @@ def main() -> None:
     template = env.get_template(template_name)
     print(
         template.render(
-            snippet_map=snippet_map,
-            glob_snippets=glob_snippets,
-            stringify_snippet_id=stringify_snippet_id,
+            group_map=group_map,
+            glob_groups=glob_groups,
+            stringify_group_id=stringify_group_id,
             pascal_case=_pascal_case,
             camel_case=_camel_case,
-            get_parent_snippet_path=get_parent_snippet_path,
+            get_parent_group_path=get_parent_group_path,
         )
     )
 

@@ -23,11 +23,11 @@ license-files = ["LICENSE"]
 keywords = []
 
 [tool.setuptools]
-packages = ["kicad_snippet_netlister", "snippet_one_to_many_mapper", "snippet_many_to_many_mapper", "code_gen", "common_types", "map_to_csv"]
+packages = ["kicad_group_netlister", "group_one_to_many_mapper", "group_many_to_many_mapper", "code_gen", "common_types", "map_to_csv"]
 
 [project.scripts]
-kicad_snippet_netlister = "kicad_snippet_netlister.kicad_snippet_netlister:main"
-snippet_one_to_many_mapper = "snippet_one_to_many_mapper.snippet_one_to_many_mapper:main"
-snippet_many_to_many_mapper = "snippet_many_to_many_mapper.snippet_many_to_many_mapper:main"
+kicad_group_netlister = "kicad_group_netlister.kicad_group_netlister:main"
+group_one_to_many_mapper = "group_one_to_many_mapper.group_one_to_many_mapper:main"
+group_many_to_many_mapper = "group_many_to_many_mapper.group_many_to_many_mapper:main"
 code_gen = "code_gen.code_gen:main"
 map_to_csv = "map_to_csv.map_to_csv:main"

@@ -4,90 +4,90 @@ from datetime import datetime
 from pathlib import Path
 from typing import Set, Tuple
 
-from common_types.snippet_types import (
-    GlobalSnippetPinIdentifier,
-    OtherSnippetPinType,
-    Snippet,
-    SnippetIdentifier,
-    SnippetMap,
-    SnippetNet,
-    SnippetNetlist,
-    SnippetPath,
-    SnippetPinName,
-    SnippetType,
+from common_types.group_types import (
+    GlobalGroupPinIdentifier,
+    OtherGroupPinType,
+    Group,
+    GroupIdentifier,
+    GroupMap,
+    GroupNet,
+    GroupNetlist,
+    GroupPath,
+    GroupPinName,
+    GroupType,
 )
-from common_types.stringify_xml import stringify_snippet_map, stringify_snippet_netlist
+from common_types.stringify_xml import stringify_group_map, stringify_group_netlist
 
 
-def _parse_snippet(
-    snippet_tag: ET.Element, other_snippet_pin_type: OtherSnippetPinType
-) -> Snippet:
-    snippet = Snippet()
+def _parse_group(
+    group_tag: ET.Element, other_group_pin_type: OtherGroupPinType
+) -> Group:
+    group = Group()
 
-    path = snippet_tag.get("path")
+    path = group_tag.get("path")
     assert path is not None
-    snippet.path = SnippetPath(path)
+    group.path = GroupPath(path)
 
-    type_name = snippet_tag.get("type")
+    type_name = group_tag.get("type")
     assert type_name is not None
-    snippet.type_name = SnippetType(type_name)
+    group.type_name = GroupType(type_name)
 
-    snippet.snippet_map_fields = dict()
-    snippet_map_field_tags = snippet_tag.findall("./snippetMapFields/snippetMapField")
-    for snippet_map_field_tag in snippet_map_field_tags:
-        name = snippet_map_field_tag.get("name")
+    group.group_map_fields = dict()
+    group_map_field_tags = group_tag.findall("./groupMapFields/groupMapField")
+    for group_map_field_tag in group_map_field_tags:
+        name = group_map_field_tag.get("name")
         assert name is not None
-        value = snippet_map_field_tag.text
+        value = group_map_field_tag.text
         assert value is not None
-        assert name not in snippet.snippet_map_fields
-        snippet.snippet_map_fields[name] = value
+        assert name not in group.group_map_fields
+        group.group_map_fields[name] = value
 
-    snippet.pins = dict()
-    snippet_pin_tags = snippet_tag.findall("./pins/pin")
-    for snippet_pin_tag in snippet_pin_tags:
-        name = snippet_pin_tag.get("name")
+    group.pins = dict()
+    group_pin_tags = group_tag.findall("./pins/pin")
+    for group_pin_tag in group_pin_tags:
+        name = group_pin_tag.get("name")
         assert name is not None
-        pin_name = SnippetPinName(name)
-        root_snippet_pin = snippet_pin_tag.get("rootSnippetPin")
-        assert pin_name not in snippet.pins
-        if other_snippet_pin_type == OtherSnippetPinType.NO_OTHER_PINS:
+        pin_name = GroupPinName(name)
+        root_group_pin = group_pin_tag.get("rootGroupPin")
+        assert pin_name not in group.pins
+        if other_group_pin_type == OtherGroupPinType.NO_OTHER_PINS:
             # This is a netlist.
-            assert len(snippet_pin_tag) == 0
-            assert root_snippet_pin is None
-            snippet.pins[pin_name] = None
-        elif other_snippet_pin_type == OtherSnippetPinType.ONE_TO_MANY:
+            assert len(group_pin_tag) == 0
+            assert root_group_pin is None
+            group.pins[pin_name] = None
+        elif other_group_pin_type == OtherGroupPinType.ONE_TO_MANY:
             # This is a one-to-many map.
-            assert len(snippet_pin_tag) == 0
-            snippet.pins[pin_name] = (
-                None if root_snippet_pin is None else SnippetPinName(root_snippet_pin)
+            assert len(group_pin_tag) == 0
+            group.pins[pin_name] = (
+                None if root_group_pin is None else GroupPinName(root_group_pin)
             )
         else:
-            # This is a many-to-many map, let's see what other snippets this pin is connected to.
+            # This is a many-to-many map, let's see what other groups this pin is connected to.
             # TODO: create a pretty error message when the user uses a one_to_many instead of many-to-many map.
-            assert root_snippet_pin is None
-            assert other_snippet_pin_type == OtherSnippetPinType.MANY_TO_MANY
-            other_pins: Set[GlobalSnippetPinIdentifier] = set()
-            for other_pin_tag in snippet_pin_tag.findall("./otherPin"):
-                other_snippet_path = other_pin_tag.get("path")
-                assert other_snippet_path is not None
+            assert root_group_pin is None
+            assert other_group_pin_type == OtherGroupPinType.MANY_TO_MANY
+            other_pins: Set[GlobalGroupPinIdentifier] = set()
+            for other_pin_tag in group_pin_tag.findall("./otherPin"):
+                other_group_path = other_pin_tag.get("path")
+                assert other_group_path is not None
 
-                other_snippet_type = other_pin_tag.get("type")
-                assert other_snippet_type is not None
+                other_group_type = other_pin_tag.get("type")
+                assert other_group_type is not None
 
-                other_snippet_pin = other_pin_tag.get("pin")
-                assert other_snippet_pin is not None
+                other_group_pin = other_pin_tag.get("pin")
+                assert other_group_pin is not None
 
-                other_pin_id = GlobalSnippetPinIdentifier((
-                    SnippetIdentifier((
-                        SnippetPath(other_snippet_path),
-                        SnippetType(other_snippet_type),
+                other_pin_id = GlobalGroupPinIdentifier((
+                    GroupIdentifier((
+                        GroupPath(other_group_path),
+                        GroupType(other_group_type),
                     )),
-                    SnippetPinName(other_snippet_pin),
+                    GroupPinName(other_group_pin),
                 ))
                 other_pins.add(other_pin_id)
-            snippet.pins[pin_name] = other_pins
+            group.pins[pin_name] = other_pins
 
-    return snippet
+    return group
 
 
 def _parse_xml_root(path: Path) -> Tuple[ET.Element, Path, datetime, str]:
@@ -115,116 +115,112 @@ def _parse_xml_root(path: Path) -> Tuple[ET.Element, Path, datetime, str]:
     return root, source, date, tool
 
 
-def _parse_snippet_node(node_tag: ET.Element) -> GlobalSnippetPinIdentifier:
+def _parse_group_node(node_tag: ET.Element) -> GlobalGroupPinIdentifier:
     raw_path = node_tag.get("path")
     assert raw_path is not None
-    path = SnippetPath(raw_path)
+    path = GroupPath(raw_path)
 
     raw_type_name = node_tag.get("type")
     assert raw_type_name is not None
-    type_name = SnippetType(raw_type_name)
+    type_name = GroupType(raw_type_name)
 
     raw_pin = node_tag.get("pin")
     assert raw_pin is not None
-    pin = SnippetPinName(raw_pin)
+    pin = GroupPinName(raw_pin)
 
-    return GlobalSnippetPinIdentifier((
-        SnippetIdentifier((path, type_name)),
+    return GlobalGroupPinIdentifier((
+        GroupIdentifier((path, type_name)),
         pin,
     ))
 
 
-def _parse_snippet_net(net_tag: ET.Element) -> SnippetNet:
+def _parse_group_net(net_tag: ET.Element) -> GroupNet:
     node_tags = net_tag.findall("./node")
-    return SnippetNet(
-        frozenset({_parse_snippet_node(node_tag) for node_tag in node_tags})
+    return GroupNet(frozenset({_parse_group_node(node_tag) for node_tag in node_tags}))
+
+
+def parse_group_netlist(group_netlist_path: Path) -> GroupNetlist:
+    group_netlist = GroupNetlist()
+    root, group_netlist.source, group_netlist.date, group_netlist.tool = (
+        _parse_xml_root(group_netlist_path)
     )
 
-
-def parse_snippet_netlist(snippet_netlist_path: Path) -> SnippetNetlist:
-    snippet_netlist = SnippetNetlist()
-    root, snippet_netlist.source, snippet_netlist.date, snippet_netlist.tool = (
-        _parse_xml_root(snippet_netlist_path)
-    )
-
-    snippet_tags = root.findall("./snippets/snippet")
-    snippet_netlist.snippets = dict()
-    for snippet_tag in snippet_tags:
-        snippet = _parse_snippet(snippet_tag, OtherSnippetPinType.NO_OTHER_PINS)
-        snippet_id = snippet.get_id()
-        assert snippet_id not in snippet_netlist.snippets
-        snippet_netlist.snippets[snippet_id] = snippet
+    group_tags = root.findall("./groups/group")
+    group_netlist.groups = dict()
+    for group_tag in group_tags:
+        group = _parse_group(group_tag, OtherGroupPinType.NO_OTHER_PINS)
+        group_id = group.get_id()
+        assert group_id not in group_netlist.groups
+        group_netlist.groups[group_id] = group
 
     nets = root.findall("./nets/net")
-    snippet_netlist.nets = {_parse_snippet_net(net) for net in nets}
+    group_netlist.nets = {_parse_group_net(net) for net in nets}
 
     # Check that stringifying what we parsed gets us back.
-    with open(snippet_netlist_path, "rb") as snippet_netlist_file:
-        check_snippet_netlist = stringify_snippet_netlist(snippet_netlist)
-        if check_snippet_netlist != snippet_netlist_file.read():
+    with open(group_netlist_path, "rb") as group_netlist_file:
+        check_group_netlist = stringify_group_netlist(group_netlist)
+        if check_group_netlist != group_netlist_file.read():
             print(
-                "Warning: The snippet netlist was created with a different stringify algorithm or is buggy.",
+                "Warning: The group netlist was created with a different stringify algorithm or is buggy.",
                 file=sys.stderr,
             )
 
-    return snippet_netlist
+    return group_netlist
 
 
-def parse_one_to_many_snippet_map(snippet_map_path: Path) -> SnippetMap:
-    snippet_map = SnippetMap()
-    snippet_map.map_type = OtherSnippetPinType.ONE_TO_MANY
-    root, snippet_map.source, snippet_map.date, snippet_map.tool = _parse_xml_root(
-        snippet_map_path
+def parse_one_to_many_group_map(group_map_path: Path) -> GroupMap:
+    group_map = GroupMap()
+    group_map.map_type = OtherGroupPinType.ONE_TO_MANY
+    root, group_map.source, group_map.date, group_map.tool = _parse_xml_root(
+        group_map_path
     )
 
-    root_snippet_tags = root.findall("./rootSnippet")
-    assert len(root_snippet_tags) == 1
-    snippet_map.root_snippet = _parse_snippet(
-        root_snippet_tags[0], OtherSnippetPinType.ONE_TO_MANY
+    root_group_tags = root.findall("./rootGroup")
+    assert len(root_group_tags) == 1
+    group_map.root_group = _parse_group(
+        root_group_tags[0], OtherGroupPinType.ONE_TO_MANY
     )
 
-    connected_snippets = root.findall("./snippets/snippet")
-    snippet_map.snippets = {
-        _parse_snippet(snippet, OtherSnippetPinType.ONE_TO_MANY)
-        for snippet in connected_snippets
+    connected_groups = root.findall("./groups/group")
+    group_map.groups = {
+        _parse_group(group, OtherGroupPinType.ONE_TO_MANY) for group in connected_groups
     }
 
     # Check that stringifying what we parsed gets us back.
-    with open(snippet_map_path, "rb") as snippet_map_file:
-        check_snippet_map = stringify_snippet_map(snippet_map)
-        if check_snippet_map != snippet_map_file.read():
+    with open(group_map_path, "rb") as group_map_file:
+        check_group_map = stringify_group_map(group_map)
+        if check_group_map != group_map_file.read():
             print(
-                "Warning: The one-to-many snippet map was created with a different stringify algorithm or is buggy.",
+                "Warning: The one-to-many group map was created with a different stringify algorithm or is buggy.",
                 file=sys.stderr,
             )
 
-    return snippet_map
+    return group_map
 
 
-def parse_many_to_many_snippet_map(snippet_map_path: Path) -> SnippetMap:
-    snippet_map = SnippetMap()
-    snippet_map.map_type = OtherSnippetPinType.MANY_TO_MANY
-    root, snippet_map.source, snippet_map.date, snippet_map.tool = _parse_xml_root(
-        snippet_map_path
+def parse_many_to_many_group_map(group_map_path: Path) -> GroupMap:
+    group_map = GroupMap()
+    group_map.map_type = OtherGroupPinType.MANY_TO_MANY
+    root, group_map.source, group_map.date, group_map.tool = _parse_xml_root(
+        group_map_path
     )
-    snippet_map.root_snippet = None
+    group_map.root_group = None
 
-    root_snippet_tags = root.findall("./rootSnippet")
-    assert len(root_snippet_tags) == 0
+    root_group_tags = root.findall("./rootGroup")
+    assert len(root_group_tags) == 0
 
-    snippets = root.findall("./snippets/snippet")
-    snippet_map.snippets = {
-        _parse_snippet(snippet, OtherSnippetPinType.MANY_TO_MANY)
-        for snippet in snippets
+    groups = root.findall("./groups/group")
+    group_map.groups = {
+        _parse_group(group, OtherGroupPinType.MANY_TO_MANY) for group in groups
     }
 
     # Check that stringifying what we parsed gets us back.
-    with open(snippet_map_path, "rb") as snippet_map_file:
-        check_snippet_map = stringify_snippet_map(snippet_map)
-        if check_snippet_map != snippet_map_file.read():
+    with open(group_map_path, "rb") as group_map_file:
+        check_group_map = stringify_group_map(group_map)
+        if check_group_map != group_map_file.read():
             print(
-                "Warning: The many-to-many snippet map was created with a different stringify algorithm or is buggy.",
+                "Warning: The many-to-many group map was created with a different stringify algorithm or is buggy.",
                 file=sys.stderr,
             )
 
-    return snippet_map
+    return group_map

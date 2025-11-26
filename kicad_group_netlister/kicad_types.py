@@ -1,11 +1,11 @@
 from pathlib import Path
 from typing import Dict, FrozenSet, NewType, Set, Tuple
 
-from common_types.snippet_types import (
-    SnippetIdentifier,
-    SnippetPath,
-    SnippetPinName,
-    SnippetType,
+from common_types.group_types import (
+    GroupIdentifier,
+    GroupPath,
+    GroupPinName,
+    GroupType,
 )
 
 KiCadComponentRef = NewType("KiCadComponentRef", str)
@@ -66,40 +66,40 @@ class KiCadNetlist:
         )
 
 
-class RawSnippet:
-    path: SnippetPath
-    type_name: SnippetType
+class RawGroup:
+    path: GroupPath
+    type_name: GroupType
     """
     Map key to value.
     """
-    snippet_map_fields: Dict[str, str]
+    group_map_fields: Dict[str, str]
 
     components: Set[KiCadComponent]
 
-    def get_id(self) -> SnippetIdentifier:
-        return SnippetIdentifier((self.path, self.type_name))
+    def get_id(self) -> GroupIdentifier:
+        return GroupIdentifier((self.path, self.type_name))
 
     def __repr__(self) -> str:
         return (
-            f"RawSnippet(path={self.path!r}, type_name={self.type_name!r}, "
-            f"fields={list(self.snippet_map_fields.keys())!r}, components={len(self.components)})"
+            f"RawGroup(path={self.path!r}, type_name={self.type_name!r}, "
+            f"fields={list(self.group_map_fields.keys())!r}, components={len(self.components)})"
         )
 
 
 """
-mapping from snippet name to the info we can directly pull from the KiCad netlist
+mapping from group name to the info we can directly pull from the KiCad netlist
 """
-RawSnippetLookup = NewType("RawSnippetLookup", Dict[SnippetIdentifier, RawSnippet])
+RawGroupLookup = NewType("RawGroupLookup", Dict[GroupIdentifier, RawGroup])
 """
-mapping from component ref to snippet name
+mapping from component ref to group name
 """
-SnippetsReverseLookup = NewType(
-    "SnippetsReverseLookup", Dict[KiCadComponentRef, SnippetIdentifier]
+GroupsReverseLookup = NewType(
+    "GroupsReverseLookup", Dict[KiCadComponentRef, GroupIdentifier]
 )
 """
-For each snippet this resolves the pins global identifier to the explicitly chosen pin name.
+For each group this resolves the pins global identifier to the explicitly chosen pin name.
 """
-SnippetPinNameLookups = NewType(
-    "SnippetPinNameLookups",
-    Dict[SnippetIdentifier, Dict[GlobalKiCadPinIdentifier, SnippetPinName]],
+GroupPinNameLookups = NewType(
+    "GroupPinNameLookups",
+    Dict[GroupIdentifier, Dict[GlobalKiCadPinIdentifier, GroupPinName]],
 )
