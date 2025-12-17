@@ -1,13 +1,10 @@
-all: ICA_EPS_Distribution_netlist.xml ICA_EPS_Distribution_group_netlist.xml ICA_EPS_Distribution_group_one_to_many_map.xml ICA_EPS_Distribution_group_many_to_many_map_connectors.xml ICA_EPS_Distribution_group_many_to_many_map.xml board.h connectors.csv
+all: ICA_EPS_Distribution_netlist.xml ICA_EPS_Distribution_group_netlist.xml ICA_EPS_Distribution_group_many_to_many_map_connectors.xml ICA_EPS_Distribution_group_many_to_many_map.xml board.h connectors.csv
 
 ICA_EPS_Distribution_netlist.xml: /home/chris/pluto_eps_distribution/ICA_EPS_Distribution.kicad_sch
 	kicad-cli sch export netlist --format kicadxml --output ICA_EPS_Distribution_netlist.xml ~/pluto_eps_distribution/ICA_EPS_Distribution.kicad_sch
 
 ICA_EPS_Distribution_group_netlist.xml: ICA_EPS_Distribution_netlist.xml
 	python3 -m kicad_group_netlister.kicad_group_netlister ICA_EPS_Distribution_netlist.xml > ICA_EPS_Distribution_group_netlist.xml
-
-ICA_EPS_Distribution_group_one_to_many_map.xml: ICA_EPS_Distribution_group_netlist.xml
-	python3 -m group_one_to_many_mapper.group_one_to_many_mapper ICA_EPS_Distribution_group_netlist.xml '/Controller/Controller' > ICA_EPS_Distribution_group_one_to_many_map.xml
 
 ICA_EPS_Distribution_group_many_to_many_map.xml: ICA_EPS_Distribution_group_netlist.xml
 	python3 -m group_many_to_many_mapper.group_many_to_many_mapper ICA_EPS_Distribution_group_netlist.xml > ICA_EPS_Distribution_group_many_to_many_map.xml
@@ -22,4 +19,4 @@ connectors.csv: ICA_EPS_Distribution_group_many_to_many_map_connectors.xml
 	python3 -m map_to_csv.map_to_csv ICA_EPS_Distribution_group_many_to_many_map_connectors.xml > connectors.csv
 
 clean:
-	rm -vf ICA_EPS_Distribution_netlist.xml ICA_EPS_Distribution_group_netlist.xml ICA_EPS_Distribution_group_one_to_many_map.xml ICA_EPS_Distribution_group_many_to_many_map_connectors.xml ICA_EPS_Distribution_group_many_to_many_map.xml board.h connectors.csv
+	rm -vf ICA_EPS_Distribution_netlist.xml ICA_EPS_Distribution_group_netlist.xml ICA_EPS_Distribution_group_many_to_many_map_connectors.xml ICA_EPS_Distribution_group_many_to_many_map.xml board.h connectors.csv
