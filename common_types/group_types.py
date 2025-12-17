@@ -26,7 +26,7 @@ These pins are connected.
 MutableGroupNet = NewType("MutableGroupNet", Set[GlobalGroupPinIdentifier])
 GroupNet = NewType("GroupNet", FrozenSet[GlobalGroupPinIdentifier])
 
-GroupGlob = NewType("GroupGlob", re.Pattern[str])
+GroupGlob = NewType("GroupGlob", FrozenSet[re.Pattern[str]])
 
 
 class Group:
@@ -174,9 +174,20 @@ def get_parent_group_path(path: GroupPath) -> GroupPath:
     return GroupPath("/".join(nodes))
 
 
+# TODO: ensure no groups have a comma inside them.
 def compile_group_glob(group_glob_str: str) -> GroupGlob:
-    regex = glob.translate(group_glob_str, recursive=True, include_hidden=True)
-    return GroupGlob(re.compile(regex))
+    """
+    A group glob is a list of path globs with *, **, [].
+    Each path glob is separated with a , (a single comma without spaces).
+    """
+    globs = group_glob_str.split(",")
+    regexes = {
+        re.compile(
+            glob.translate(single_group_glob_str, recursive=True, include_hidden=True)
+        )
+        for single_group_glob_str in globs
+    }
+    return GroupGlob(frozenset(regexes))
 
 
 # TODO: maybe make a class out of this.
@@ -185,5 +196,7 @@ def does_match_pattern(
 ) -> bool:
     if pattern is None:
         return when_none
-    found = pattern.match(stringify_group_id(group_id)) is not None
-    return found
+    for single_pattern in pattern:
+        if single_pattern.match(stringify_group_id(group_id)) is not None:
+            return True
+    return False
