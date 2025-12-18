@@ -22,7 +22,7 @@ def _xmlify_group(
     root = ET.Element(tag_name)
     root.set("schematic", group.schematic)
     root.set("path", group.path)
-    root.set("type", group.type_name)
+    root.set("type", group.group_type)
 
     group_map_fields = ET.SubElement(root, "groupMapFields")
     for key, value in group.group_map_fields.items():
@@ -45,10 +45,10 @@ def _xmlify_group(
             other_pins.sort()
             for other_pin in other_pins:
                 xml_other_pin = ET.SubElement(pin, "otherPin")
-                xml_other_pin.set("schematic", other_pin[0][0])
-                xml_other_pin.set("path", other_pin[0][1])
-                xml_other_pin.set("type", other_pin[0][2])
-                xml_other_pin.set("pin", other_pin[1])
+                xml_other_pin.set("schematic", other_pin.group_id.schematic)
+                xml_other_pin.set("path", other_pin.group_id.path)
+                xml_other_pin.set("type", other_pin.group_id.group_type)
+                xml_other_pin.set("pin", other_pin.pin)
         elif other_group_pin_type == OtherGroupPinType.ONE_TO_MANY:
             root_group_pin = pin_connection
             if root_group_pin is not None:
@@ -83,10 +83,10 @@ def _xmlify_net(net: GroupNet, tag_name: str) -> ET.Element:
     nodes.sort()
     for node in nodes:
         xml_node = ET.SubElement(xml_net, "node")
-        xml_node.set("schematic", node[0][0])
-        xml_node.set("path", node[0][1])
-        xml_node.set("type", node[0][2])
-        xml_node.set("pin", node[1])
+        xml_node.set("schematic", node.group_id.schematic)
+        xml_node.set("path", node.group_id.path)
+        xml_node.set("type", node.group_id.group_type)
+        xml_node.set("pin", node.pin)
     return xml_net
 
 

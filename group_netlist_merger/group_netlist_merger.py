@@ -24,7 +24,7 @@ class PinMapper(Enum):
     equal = "equal"
     even_odd = "even_odd"
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.value
 
 
@@ -112,18 +112,18 @@ def _connect_netlist(
         for group_set in to_connect_group_sets:
             # We need a node in the net_a that should be connected to a node in net_b.
             for node_a in net_a:
-                if node_a[0] not in group_set:
+                if node_a.group_id not in group_set:
                     # The node is not of a group that should be connected.
                     continue
                 for node_b in net_b:
-                    if node_b[0] not in group_set:
+                    if node_b.group_id not in group_set:
                         # The node is not of a group that should be connected.
                         continue
-                    if node_a[0] == node_b[0]:
+                    if node_a.group_id == node_b.group_id:
                         # Do not connect a group to itself.
                         # This would be a problem with even_odd pin mapping.
                         continue
-                    if not should_pins_connect(node_b[1], node_a[1]):
+                    if not should_pins_connect(node_b.pin, node_a.pin):
                         # The pins of node_a and node_b aren't the same -> don't connect.
                         continue
                     return True

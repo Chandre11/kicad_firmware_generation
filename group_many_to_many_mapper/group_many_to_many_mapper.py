@@ -48,9 +48,11 @@ def _gen_many_to_many_group_map(
                 for other_pin in net
                 # Skip the own pin.
                 if other_pin
-                != GlobalGroupPinIdentifier((group_identifier, group_pin_name))
+                != GlobalGroupPinIdentifier(group_identifier, group_pin_name)
                 # Skip other
-                and not does_match_pattern(root_group_pattern, other_pin[0], False)
+                and not does_match_pattern(
+                    root_group_pattern, other_pin.group_id, False
+                )
             }
 
     # Simplify some nets.
@@ -58,7 +60,7 @@ def _gen_many_to_many_group_map(
         for pin in group.pins.values():
             # Check if this net can be simplified.
 
-            # Should be Set[GlobalGroupPinIdentifier] but that isn't konwn at runtime.
+            # Should be Set[GlobalGroupPinIdentifier] but that isn't known at runtime.
             assert type(pin) is set
             # Not None iff we found a simplification.
             found_simplify_pin: GroupPinName | None = None
@@ -76,15 +78,15 @@ def _gen_many_to_many_group_map(
             if found_simplify_pin is not None:
                 pin.clear()
                 pin.add(
-                    GlobalGroupPinIdentifier((
-                        GroupIdentifier((
+                    GlobalGroupPinIdentifier(
+                        GroupIdentifier(
                             # TODO: do this better
                             Schematic("This_was"),
                             GroupPath("/Simplified/"),
                             GroupType("Away"),
-                        )),
+                        ),
                         found_simplify_pin,
-                    ))
+                    )
                 )
 
     group_map.groups = {

@@ -61,13 +61,13 @@ def _group_components_by_group(
             continue
         group_type = GroupType(component.fields[GROUP_TYPE_FIELD_NAME])
         group_path = GroupPath(component.sheetpath)
-        group_identifier = GroupIdentifier((netlist.schematic, group_path, group_type))
+        group_identifier = GroupIdentifier(netlist.schematic, group_path, group_type)
 
         if group_identifier not in groups:
             groups[group_identifier] = RawGroup()
             groups[group_identifier].schematic = netlist.schematic
             groups[group_identifier].path = group_path
-            groups[group_identifier].type_name = group_type
+            groups[group_identifier].group_type = group_type
             groups[group_identifier].components = {component}
             groups[group_identifier].group_map_fields = dict()
         else:
@@ -120,10 +120,10 @@ def _get_explicit_pin_name_lookups(
                 node_pin_name = KiCadNodePinName(
                     field_name[len(GROUP_PIN_FIELD_PREFIX) :]
                 )
-                global_pin_identifier = GlobalKiCadPinIdentifier((
+                global_pin_identifier = GlobalKiCadPinIdentifier(
                     component.ref,
                     node_pin_name,
-                ))
+                )
                 # We can't have the same globally unique reference for two pins.
                 for other_expicit_in_naming_group in explicit_pin_namings.values():
                     assert global_pin_identifier not in other_expicit_in_naming_group
@@ -177,7 +177,7 @@ def _gen_group_netlist(
         group = Group()
         group.schematic = raw_group.schematic
         group.path = raw_group.path
-        group.type_name = raw_group.type_name
+        group.group_type = raw_group.group_type
         group.group_map_fields = raw_group.group_map_fields
         # We populate the pins when we loop over all nets.
         group.pins = dict()
@@ -193,7 +193,7 @@ def _gen_group_netlist(
                 # The node does not belong to a component that belongs to a group.
                 continue
             group_identifier = groups_reverse_lookup[node.ref]
-            global_pin_identifier = GlobalKiCadPinIdentifier((node.ref, node.pin))
+            global_pin_identifier = GlobalKiCadPinIdentifier(node.ref, node.pin)
 
             # Figure out what name this pin has.
             group_pin_name: GroupPinName
@@ -214,10 +214,10 @@ def _gen_group_netlist(
             groups_lookup[group_identifier].pins[group_pin_name] = None
 
             # This uniquely identifies the pin in the entire group map.
-            global_group_pin_identifier = GlobalGroupPinIdentifier((
+            global_group_pin_identifier = GlobalGroupPinIdentifier(
                 group_identifier,
                 group_pin_name,
-            ))
+            )
 
             if (
                 global_group_pin_identifier in global_group_pin_to_component

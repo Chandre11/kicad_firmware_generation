@@ -36,7 +36,7 @@ def _parse_group(
 
     type_name = group_tag.get("type")
     assert type_name is not None
-    group.type_name = GroupType(type_name)
+    group.group_type = GroupType(type_name)
 
     group.group_map_fields = dict()
     group_map_field_tags = group_tag.findall("./groupMapFields/groupMapField")
@@ -86,14 +86,14 @@ def _parse_group(
                 other_group_pin = other_pin_tag.get("pin")
                 assert other_group_pin is not None
 
-                other_pin_id = GlobalGroupPinIdentifier((
-                    GroupIdentifier((
+                other_pin_id = GlobalGroupPinIdentifier(
+                    GroupIdentifier(
                         Schematic(other_group_schematic),
                         GroupPath(other_group_path),
                         GroupType(other_group_type),
-                    )),
+                    ),
                     GroupPinName(other_group_pin),
-                ))
+                )
                 other_pins.add(other_pin_id)
             group.pins[pin_name] = other_pins
 
@@ -145,10 +145,10 @@ def _parse_group_node(node_tag: ET.Element) -> GlobalGroupPinIdentifier:
     assert raw_pin is not None
     pin = GroupPinName(raw_pin)
 
-    return GlobalGroupPinIdentifier((
-        GroupIdentifier((schematic, path, type_name)),
+    return GlobalGroupPinIdentifier(
+        GroupIdentifier(schematic, path, type_name),
         pin,
-    ))
+    )
 
 
 def _parse_group_net(net_tag: ET.Element) -> GroupNet:

@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Dict, FrozenSet, NewType, Set, Tuple
+from typing import Dict, FrozenSet, NamedTuple, NewType, Set
 
 from common_types.group_types import (
     GroupIdentifier,
@@ -12,13 +12,16 @@ from common_types.group_types import (
 KiCadComponentRef = NewType("KiCadComponentRef", str)
 KiCadSheetPath = NewType("KiCadSheetPath", str)
 KiCadNodePinName = NewType("KiCadNodePinName", str)
-"""
-globally unique descriptor for a pin
-"""
-GlobalKiCadPinIdentifier = NewType(
-    "GlobalKiCadPinIdentifier", Tuple[KiCadComponentRef, KiCadNodePinName]
-)
 KiCadNodePinFunction = NewType("KiCadNodePinFunction", str)
+
+
+class GlobalKiCadPinIdentifier(NamedTuple):
+    """
+    globally unique descriptor for a pin
+    """
+
+    ref: KiCadComponentRef
+    pin: KiCadNodePinName
 
 
 class KiCadSheet:
@@ -71,7 +74,7 @@ class KiCadNetlist:
 class RawGroup:
     schematic: Schematic
     path: GroupPath
-    type_name: GroupType
+    group_type: GroupType
     """
     Map key to value.
     """
@@ -80,11 +83,11 @@ class RawGroup:
     components: Set[KiCadComponent]
 
     def get_id(self) -> GroupIdentifier:
-        return GroupIdentifier((self.schematic, self.path, self.type_name))
+        return GroupIdentifier(self.schematic, self.path, self.group_type)
 
     def __repr__(self) -> str:
         return (
-            f"RawGroup(path={self.path!r}, type_name={self.type_name!r}, "
+            f"RawGroup(path={self.path!r}, type_name={self.group_type!r}, "
             f"fields={list(self.group_map_fields.keys())!r}, components={len(self.components)})"
         )
 

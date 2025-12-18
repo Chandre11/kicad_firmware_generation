@@ -1,6 +1,6 @@
 import sys
 from pathlib import Path
-from typing import List, Set
+from typing import List
 
 from jinja2 import Environment, FileSystemLoader, StrictUndefined
 

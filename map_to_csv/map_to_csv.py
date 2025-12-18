@@ -59,7 +59,7 @@ def main() -> None:
             csv_writer.writerow({
                 "schematic": group.schematic,
                 "group_path": group.path,
-                "group_type": group.type_name,
+                "group_type": group.group_type,
                 "pin_name": pin_name,
                 "other_pins": other_pins_str,
             })

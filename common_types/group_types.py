@@ -4,7 +4,7 @@ from datetime import datetime
 from enum import Enum
 from pathlib import Path
 import sys
-from typing import Dict, FrozenSet, List, NewType, Set, Tuple
+from typing import Dict, FrozenSet, List, NamedTuple, NewType, Set
 
 Schematic = NewType("Schematic", str)
 """
@@ -14,12 +14,20 @@ There must be a leading slash and no trailing slash.
 GroupPath = NewType("GroupPath", str)
 GroupPathNode = NewType("GroupPathNode", str)
 GroupType = NewType("GroupType", str)
-GroupIdentifier = NewType("GroupIdentifier", Tuple[Schematic, GroupPath, GroupType])
 GroupPinName = NewType("GroupPinName", str)
 
-GlobalGroupPinIdentifier = NewType(
-    "GlobalGroupPinIdentifier", Tuple[GroupIdentifier, GroupPinName]
-)
+
+class GroupIdentifier(NamedTuple):
+    schematic: Schematic
+    path: GroupPath
+    group_type: GroupType
+
+
+class GlobalGroupPinIdentifier(NamedTuple):
+    group_id: GroupIdentifier
+    pin: GroupPinName
+
+
 """
 These pins are connected.
 """
@@ -30,9 +38,10 @@ GroupGlob = NewType("GroupGlob", FrozenSet[re.Pattern[str]])
 
 
 class Group:
+    # This is not a single group_id to allow building this object step by step.
     schematic: Schematic
     path: GroupPath
-    type_name: GroupType
+    group_type: GroupType
     """
     Map key to value.
     """
@@ -47,7 +56,7 @@ class Group:
     pins: Dict[GroupPinName, GroupPinName | None | Set[GlobalGroupPinIdentifier]]
 
     def get_id(self) -> GroupIdentifier:
-        return GroupIdentifier((self.schematic, self.path, self.type_name))
+        return GroupIdentifier(self.schematic, self.path, self.group_type)
 
     def _get_pins_to_glob(
         self, glob_str: str
@@ -63,7 +72,7 @@ class Group:
             # This should be Set[GlobalGroupPinIdentifier] but that isn't known at runtime.
             assert type(other_pins) is set
             pins[pin] = {
-                GlobalGroupPinIdentifier((other_group, other_pin))
+                GlobalGroupPinIdentifier(other_group, other_pin)
                 for (other_group, other_pin) in other_pins
                 if does_match_pattern(pattern, other_group)
             }
@@ -102,7 +111,7 @@ class Group:
 
     def __repr__(self) -> str:
         return (
-            f"Group(path={self.path!r}, type_name={self.type_name!r}, "
+            f"Group(path={self.path!r}, type_name={self.group_type!r}, "
             f"fields={list(self.group_map_fields.keys())!r}, pins={len(self.pins)})"
         )
 
@@ -158,7 +167,7 @@ def stringify_group_id(id: GroupIdentifier) -> str:
     It consists of the source schematic, the group path and group type.
     There are no double slashes between the path nodes.
     """
-    return f"{id[0]}{id[1]}{id[2]}"
+    return f"{id.schematic}{id.path}{id.group_type}"
 
 
 def split_group_path(path: GroupPath) -> List[GroupPathNode]:
