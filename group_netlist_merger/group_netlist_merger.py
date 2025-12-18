@@ -2,12 +2,14 @@ import argparse
 import sys
 from pathlib import Path
 from typing import FrozenSet, Set
+from enum import Enum
 
 from common_types.group_types import (
     GroupGlob,
     GroupIdentifier,
     GroupNet,
     GroupNetlist,
+    GroupPinName,
     compile_group_glob,
     does_match_pattern,
     stringify_group_id,
@@ -16,6 +18,14 @@ from common_types.parse_xml import parse_group_netlist
 from common_types.stringify_xml import stringify_group_netlist
 
 TOOL_NAME = "group_netlist_merger v0.1.0"
+
+
+class PinMapper(Enum):
+    equal = "equal"
+    even_odd = "even_odd"
+
+    def __str__(self):
+        return self.value
 
 
 def _merge_group_netlists(netlists: Set[GroupNetlist]) -> GroupNetlist:
@@ -29,15 +39,13 @@ def _merge_group_netlists(netlists: Set[GroupNetlist]) -> GroupNetlist:
         for group_id in netlist.groups.keys():
             assert group_id not in new_netlist.groups
         netlist.groups |= new_netlist.groups
-        print(netlist.nets, file=sys.stderr)
-        print(new_netlist.nets, file=sys.stderr)
         assert len(netlist.nets & new_netlist.nets) == 0
         netlist.nets |= new_netlist.nets
     return netlist
 
 
 def _connect_netlist(
-    netlist: GroupNetlist, connect_group_globs: Set[GroupGlob]
+    netlist: GroupNetlist, connect_group_globs: Set[GroupGlob], pin_mapper: PinMapper
 ) -> GroupNetlist:
     # For each group glob figure out what groups it matches.
     to_connect_group_sets: Set[FrozenSet[GroupIdentifier]] = set()
@@ -66,6 +74,33 @@ def _connect_netlist(
             )
         to_connect_group_sets.add(frozenset(to_connect_group_set))
 
+    def matches_pins(pin_a: GroupPinName, pin_b: GroupPinName) -> bool:
+        match pin_mapper:
+            case PinMapper.equal:
+                return pin_a == pin_b
+
+            case PinMapper.even_odd:
+                # 1 <-> 2
+                # 2 <-> 1
+                # 3 <-> 4
+                # 4 <-> 3
+                # ...
+                try:
+                    num_a = int(pin_a)
+                    num_b = int(pin_b)
+                except ValueError:
+                    print(
+                        f"Error: The pin_mapper {PinMapper.even_odd} needs numerical pins but {pin_a} and/or {pin_b} are not numerical.",
+                        file=sys.stderr,
+                    )
+                    sys.exit(1)
+
+                if num_a % 2 == 1:
+                    return num_a + 1 == num_b
+                if num_b % 2 == 1:
+                    return num_b + 1 == num_a
+                return False
+
     # This relation should be transitive but isn't.
     # We implement the transitive nature further down.
     # This could be implemented a lot faster but this is a lot simpler and easier to manually verify.
@@ -81,11 +116,11 @@ def _connect_netlist(
                     # The node is not of a group that should be connected.
                     continue
                 for node_b in net_b:
-                    if node_b[1] != node_a[1]:
-                        # The pins of node_a and node_b aren't the same -> don't connect.
-                        continue
                     if node_b[0] not in group_set:
                         # The node is not of a group that should be connected.
+                        continue
+                    if matches_pins(node_b[1], node_a[1]):
+                        # The pins of node_a and node_b aren't the same -> don't connect.
                         continue
                     return True
         return False
@@ -102,9 +137,6 @@ def _connect_netlist(
                 out_net, net
             )
             if should_nets_be_merged(net, out_net):
-                if "AO_CURRENT_NONE" in {node[1] for node in net}:
-                    print(f"FOUND: {net}", file=sys.stderr)
-                print(f"Merging nets: {net} {out_net}", file=sys.stderr)
                 # Update the old net with the new nodes.
                 out_nets.remove(out_net)
                 out_nets.add(GroupNet(out_net | net))
@@ -122,6 +154,14 @@ def main() -> None:
         prog=TOOL_NAME,
         description="Merge multiple Group Netlists from different schematics into a single one. "
         "The output is printed to stdout, errors and warnings to stderr.",
+    )
+    parser.add_argument(
+        "pin_mapper",
+        help="When two groups should be connected, how should the pins be connected? "
+        "When 'equal' every pin is connected with a pin of the same name. "
+        "When 'even_odd' (this only works with numerical pin names) every odd pin number n is connected to pin n+1.",
+        type=PinMapper,
+        choices=list(PinMapper),
     )
     parser.add_argument(
         "group_netlist_file",
@@ -152,6 +192,7 @@ def main() -> None:
         set()
         if args.connect_group_glob is None
         else {compile_group_glob(group_glob) for group_glob in args.connect_group_glob},
+        args.pin_mapper,
     )
     sys.stdout.buffer.write(stringify_group_netlist(connected_merged_group_netlist))
 
