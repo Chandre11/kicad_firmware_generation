@@ -58,7 +58,7 @@ def _connect_netlist(
             if len(to_connect_group_set) != 0:
                 group = netlist.groups[group_id]
                 other_group = netlist.groups[list(to_connect_group_set)[0]]
-                if set(other_group.pins.keys()) != set(group.pins.keys()):
+                if set(other_group.pins) != set(group.pins):
                     print(
                         f"Error: The connect group glob pattern {connect_group_glob} matches both {stringify_group_id(group.get_id())} and {stringify_group_id(other_group.get_id())} but they don't have the same pins.",
                         file=sys.stderr,

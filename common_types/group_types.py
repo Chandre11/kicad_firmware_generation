@@ -1,7 +1,6 @@
 import glob
 import re
 from datetime import datetime
-from enum import Enum
 from pathlib import Path
 import sys
 from typing import Dict, FrozenSet, List, NamedTuple, NewType, Set
@@ -46,14 +45,28 @@ class Group:
     Map key to value.
     """
     group_map_fields: Dict[str, str]
-    # TODO: remove one-to-many map
     """
-    If we are generating a one-to-many map (OtherGroupPinType.ONE_TO_MANY), map group pin name to connected root group pin name.
-    If this is the root group the value is always None.
-    If we are generating a group netlist (OtherGroupPinType.NO_PINS), the value is also always None.
-    If we are generating a many-to-many map (OtherGroupPinType.MANY_TO_MANY), the value is a set of all connected pins.
+    All the pins this group has.
     """
-    pins: Dict[GroupPinName, GroupPinName | None | Set[GlobalGroupPinIdentifier]]
+    pins: Set[GroupPinName]
+
+    def get_id(self) -> GroupIdentifier:
+        return GroupIdentifier(self.schematic, self.path, self.group_type)
+
+
+class GroupWithConnection:
+    # This is not a single group_id to allow building this object step by step.
+    schematic: Schematic
+    path: GroupPath
+    group_type: GroupType
+    """
+    Map key to value.
+    """
+    group_map_fields: Dict[str, str]
+    """
+    All the pins this group has and what they are connected to.
+    """
+    pins: Dict[GroupPinName, Set[GlobalGroupPinIdentifier]]
 
     def get_id(self) -> GroupIdentifier:
         return GroupIdentifier(self.schematic, self.path, self.group_type)
@@ -116,37 +129,10 @@ class Group:
         )
 
 
-class OtherGroupPinType(Enum):
-    NO_OTHER_PINS = "NO_OTHER_PINS"
-    ONE_TO_MANY = "ONE_TO_MANY"
-    MANY_TO_MANY = "MANY_TO_MANY"
-
-
-class GroupMap:
-    map_type: OtherGroupPinType
-
-    sources: Set[Path]
-    date: datetime
-    tool: str
-
-    """
-    None iff this is a many-to-many group map.
-    """
-    root_group: Group | None
-    groups: Set[Group]
-
-    # TODO: better __repr__ functions everywhere.
-    def __repr__(self) -> str:
-        return (
-            f"GroupMap(source={self.sources!r}, date={self.date.isoformat()}, "
-            f"tool={self.tool!r}, root_group={None if self.root_group is None else stringify_group_id(self.root_group.get_id())!r}, "
-            f"groups={len(self.groups)})"
-        )
-
-
 class GroupNetlist:
     """
     Represent what groups there are and how they are connected.
+    This information is represented in a set of nets.
     """
 
     sources: Set[Path]
@@ -157,6 +143,24 @@ class GroupNetlist:
     All groups have pins with None set as the rootPinName
     """
     groups: Dict[GroupIdentifier, Group]
+    nets: Set[GroupNet]
+
+
+class GroupNetlistWithConnections:
+    """
+    Represent what groups there are and how they are connected.
+    The GroupNetlist has a set of nets.
+    This class also has groups that already know what their pins are connected to.
+    """
+
+    sources: Set[Path]
+    date: datetime
+    tool: str
+
+    """
+    All groups have pins with None set as the rootPinName
+    """
+    groups: Dict[GroupIdentifier, GroupWithConnection]
     nets: Set[GroupNet]
 
 
@@ -210,3 +214,68 @@ def does_match_pattern(
         if single_pattern.match(stringify_group_id(group_id)) is not None:
             return True
     return False
+
+
+def _dumb_connect_group(group: Group) -> GroupWithConnection:
+    connected_group = GroupWithConnection()
+    connected_group.schematic = group.schematic
+    connected_group.path = group.path
+    connected_group.group_type = group.group_type
+    connected_group.group_map_fields = group.group_map_fields
+    # Simply pretend the group isn't connected to anything.
+    connected_group.pins = {pin: set() for pin in group.pins}
+    return connected_group
+
+
+def _unconnect_group(connected_group: GroupWithConnection) -> Group:
+    group = Group()
+    group.schematic = connected_group.schematic
+    group.path = connected_group.path
+    group.group_type = connected_group.group_type
+    group.group_map_fields = connected_group.group_map_fields
+    return group
+
+
+def connect_netlist(netlist: GroupNetlist) -> GroupNetlistWithConnections:
+    connected_netlist = GroupNetlistWithConnections()
+    connected_netlist.sources = netlist.sources
+    connected_netlist.date = datetime.now()
+    connected_netlist.tool = netlist.tool
+    connected_netlist.groups = {
+        group_id: _dumb_connect_group(group)
+        for (group_id, group) in netlist.groups.items()
+    }
+    connected_netlist.nets = netlist.nets
+
+    # Figure out what groups are connected how.
+    for net in netlist.nets:
+        for group_identifier, group_pin_name in net:
+            # No one has touched this before so it must have remained empty.
+            assert (
+                len(connected_netlist.groups[group_identifier].pins[group_pin_name])
+                == 0
+            )
+            connected_netlist.groups[group_identifier].pins[group_pin_name] = {
+                other_pin
+                for other_pin in net
+                # Skip the own pin.
+                if other_pin
+                != GlobalGroupPinIdentifier(group_identifier, group_pin_name)
+            }
+    return connected_netlist
+
+
+def unconnect_netlist(connected_netlist: GroupNetlistWithConnections) -> GroupNetlist:
+    """
+    Simply strip out the connection data from each group.
+    """
+    netlist = GroupNetlist()
+    netlist.sources = connected_netlist.sources
+    netlist.date = datetime.now()
+    netlist.tool = connected_netlist.tool
+    netlist.groups = {
+        group_id: _unconnect_group(group)
+        for (group_id, group) in connected_netlist.groups.items()
+    }
+    netlist.nets = connected_netlist.nets
+    return netlist

@@ -5,9 +5,7 @@ from typing import List, Set
 
 from common_types.group_types import (
     GroupNetlist,
-    OtherGroupPinType,
     Group,
-    GroupMap,
     GroupNet,
 )
 
@@ -16,7 +14,6 @@ XML_WARNING = "WARNING: This file has been automatically generated. Do not edit!
 
 def _xmlify_group(
     group: Group,
-    other_group_pin_type: OtherGroupPinType,
     tag_name: str,
 ) -> ET.Element:
     root = ET.Element(tag_name)
@@ -32,46 +29,23 @@ def _xmlify_group(
 
     xml_pins = ET.SubElement(root, "pins")
     # Ensure xml is deterministic.
-    pins = list(group.pins.items())
-    pins.sort(key=lambda item: item[0])
-    for name, pin_connection in pins:
+    pins = list(group.pins)
+    pins.sort()
+    for name in pins:
         pin = ET.SubElement(xml_pins, "pin")
         pin.set("name", name)
-
-        if other_group_pin_type == OtherGroupPinType.MANY_TO_MANY:
-            # This should be a Set[GlobalGroupPinIdentifier] but that typing isn't present at runtime
-            assert type(pin_connection) is set
-            other_pins = list(pin_connection)
-            other_pins.sort()
-            for other_pin in other_pins:
-                xml_other_pin = ET.SubElement(pin, "otherPin")
-                xml_other_pin.set("schematic", other_pin.group_id.schematic)
-                xml_other_pin.set("path", other_pin.group_id.path)
-                xml_other_pin.set("type", other_pin.group_id.group_type)
-                xml_other_pin.set("pin", other_pin.pin)
-        elif other_group_pin_type == OtherGroupPinType.ONE_TO_MANY:
-            root_group_pin = pin_connection
-            if root_group_pin is not None:
-                # This should be a GroupPinName but is actually a str at runtime...
-                assert type(root_group_pin) is str
-                pin.set("rootGroupPin", root_group_pin)
-        else:
-            assert other_group_pin_type == OtherGroupPinType.NO_OTHER_PINS
-            assert pin_connection is None
-            # is None: don't add anything
     return root
 
 
 def _xmlify_groups(
     groups: List[Group],
-    other_group_pin_type: OtherGroupPinType,
     tag_name: str,
 ) -> ET.Element:
     xml_groups = ET.Element(tag_name)
     # Ensure xml is deterministic.
     groups.sort(key=lambda s: s.get_id())
     for group in groups:
-        xml_group = _xmlify_group(group, other_group_pin_type, "group")
+        xml_group = _xmlify_group(group, "group")
         xml_groups.append(xml_group)
     return xml_groups
 
@@ -140,32 +114,9 @@ def stringify_group_netlist(group_netlist: GroupNetlist) -> bytes:
     root.append(
         _xmlify_groups(
             list(group_netlist.groups.values()),
-            OtherGroupPinType.NO_OTHER_PINS,
             "groups",
         )
     )
     assert GroupNet(frozenset()) not in group_netlist.nets
     root.append(_xmlify_nets(list(group_netlist.nets), "nets"))
-    return _stringify_xml(root)
-
-
-def stringify_group_map(group_map: GroupMap) -> bytes:
-    root = _create_xml_root(
-        group_map.sources, group_map.date, group_map.tool, "groupMap"
-    )
-    if group_map.map_type == OtherGroupPinType.ONE_TO_MANY:
-        assert group_map.root_group is not None
-        assert group_map.map_type == OtherGroupPinType.ONE_TO_MANY
-        root.append(
-            _xmlify_group(
-                group_map.root_group,
-                OtherGroupPinType.NO_OTHER_PINS,
-                "rootGroup",
-            )
-        )
-    else:
-        # NO_OTHER_PINS is not possible for a group map.
-        assert group_map.map_type == OtherGroupPinType.MANY_TO_MANY
-        assert group_map.root_group is None
-    root.append(_xmlify_groups(list(group_map.groups), group_map.map_type, "groups"))
     return _stringify_xml(root)

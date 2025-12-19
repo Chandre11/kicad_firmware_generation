@@ -8,22 +8,18 @@ from typing import Set, Tuple
 from common_types.group_types import (
     GlobalGroupPinIdentifier,
     GroupNetlist,
-    OtherGroupPinType,
     Group,
     GroupIdentifier,
-    GroupMap,
     GroupNet,
     GroupPath,
     GroupPinName,
     GroupType,
     Schematic,
 )
-from common_types.stringify_xml import stringify_group_map, stringify_group_netlist
+from common_types.stringify_xml import stringify_group_netlist
 
 
-def _parse_group(
-    group_tag: ET.Element, other_group_pin_type: OtherGroupPinType
-) -> Group:
+def _parse_group(group_tag: ET.Element) -> Group:
     group = Group()
 
     schematic = group_tag.get("schematic")
@@ -48,54 +44,14 @@ def _parse_group(
         assert name not in group.group_map_fields
         group.group_map_fields[name] = value
 
-    group.pins = dict()
+    group.pins = set()
     group_pin_tags = group_tag.findall("./pins/pin")
     for group_pin_tag in group_pin_tags:
         name = group_pin_tag.get("name")
         assert name is not None
         pin_name = GroupPinName(name)
-        root_group_pin = group_pin_tag.get("rootGroupPin")
         assert pin_name not in group.pins
-        if other_group_pin_type == OtherGroupPinType.NO_OTHER_PINS:
-            # This is a netlist.
-            assert len(group_pin_tag) == 0
-            assert root_group_pin is None
-            group.pins[pin_name] = None
-        elif other_group_pin_type == OtherGroupPinType.ONE_TO_MANY:
-            # This is a one-to-many map.
-            assert len(group_pin_tag) == 0
-            group.pins[pin_name] = (
-                None if root_group_pin is None else GroupPinName(root_group_pin)
-            )
-        else:
-            # This is a many-to-many map, let's see what other groups this pin is connected to.
-            # TODO: create a pretty error message when the user uses a one_to_many instead of many-to-many map.
-            assert root_group_pin is None
-            assert other_group_pin_type == OtherGroupPinType.MANY_TO_MANY
-            other_pins: Set[GlobalGroupPinIdentifier] = set()
-            for other_pin_tag in group_pin_tag.findall("./otherPin"):
-                other_group_schematic = other_pin_tag.get("schematic")
-                assert other_group_schematic is not None
-
-                other_group_path = other_pin_tag.get("path")
-                assert other_group_path is not None
-
-                other_group_type = other_pin_tag.get("type")
-                assert other_group_type is not None
-
-                other_group_pin = other_pin_tag.get("pin")
-                assert other_group_pin is not None
-
-                other_pin_id = GlobalGroupPinIdentifier(
-                    GroupIdentifier(
-                        Schematic(other_group_schematic),
-                        GroupPath(other_group_path),
-                        GroupType(other_group_type),
-                    ),
-                    GroupPinName(other_group_pin),
-                )
-                other_pins.add(other_pin_id)
-            group.pins[pin_name] = other_pins
+        group.pins.add(pin_name)
 
     return group
 
@@ -165,7 +121,7 @@ def parse_group_netlist(group_netlist_path: Path) -> GroupNetlist:
     group_tags = root.findall("./groups/group")
     group_netlist.groups = dict()
     for group_tag in group_tags:
-        group = _parse_group(group_tag, OtherGroupPinType.NO_OTHER_PINS)
+        group = _parse_group(group_tag)
         group_id = group.get_id()
         assert group_id not in group_netlist.groups
         group_netlist.groups[group_id] = group
@@ -186,35 +142,3 @@ def parse_group_netlist(group_netlist_path: Path) -> GroupNetlist:
                 )
 
     return group_netlist
-
-
-def parse_many_to_many_group_map(group_map_path: Path) -> GroupMap:
-    group_map = GroupMap()
-    group_map.map_type = OtherGroupPinType.MANY_TO_MANY
-    root, group_map.sources, group_map.date, group_map.tool = _parse_xml_root(
-        group_map_path
-    )
-    group_map.root_group = None
-
-    root_group_tags = root.findall("./rootGroup")
-    assert len(root_group_tags) == 0
-
-    groups = root.findall("./groups/group")
-    group_map.groups = {
-        _parse_group(group, OtherGroupPinType.MANY_TO_MANY) for group in groups
-    }
-
-    # Check that stringifying what we parsed gets us back.
-    with open(group_map_path, "rb") as group_map_file:
-        check_group_map = stringify_group_map(group_map)
-        if check_group_map != group_map_file.read():
-            # TODO: maybe reduce code duplication
-            with tempfile.NamedTemporaryFile(delete=False) as tmp:
-                tmp.write(check_group_map)
-                print(
-                    "Warning: The many-to-many map was created with a different stringify algorithm or is buggy. "
-                    f"The parsed and then stringified file is in: {tmp.name}",
-                    file=sys.stderr,
-                )
-
-    return group_map

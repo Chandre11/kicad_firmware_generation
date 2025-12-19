@@ -180,7 +180,7 @@ def _gen_group_netlist(
         group.group_type = raw_group.group_type
         group.group_map_fields = raw_group.group_map_fields
         # We populate the pins when we loop over all nets.
-        group.pins = dict()
+        group.pins = set()
         group_id = raw_group.get_id()
         assert group_id not in groups_lookup
         groups_lookup[group_id] = group
@@ -211,7 +211,7 @@ def _gen_group_netlist(
                 group_pin_name = GroupPinName(node.pinfunction)
 
             # Assign None because we represent connections using nets and not other pins in the groups.
-            groups_lookup[group_identifier].pins[group_pin_name] = None
+            groups_lookup[group_identifier].pins.add(group_pin_name)
 
             # This uniquely identifies the pin in the entire group map.
             global_group_pin_identifier = GlobalGroupPinIdentifier(

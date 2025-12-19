@@ -4,14 +4,15 @@ from typing import List
 
 from jinja2 import Environment, FileSystemLoader, StrictUndefined
 
-from common_types.parse_xml import parse_many_to_many_group_map
 from common_types.group_types import (
-    Group,
+    GroupWithConnection,
     compile_group_glob,
+    connect_netlist,
     does_match_pattern,
     get_parent_group_path,
     stringify_group_id,
 )
+from common_types.parse_xml import parse_group_netlist
 
 
 def _change_case(in_str: str, first_upper: bool) -> str:
@@ -45,7 +46,7 @@ def main() -> None:
             file=sys.stderr,
         )
         sys.exit(1)
-    group_map_path = Path(sys.argv[1])
+    netlist_path = Path(sys.argv[1])
     template_path = Path(sys.argv[2])
     template_env_path = (
         Path(sys.argv[3]) if len(sys.argv) == 4 else template_path.parent
@@ -58,15 +59,15 @@ def main() -> None:
         sys.exit(1)
     template_name = str(template_path.relative_to(template_env_path))
 
-    group_map = parse_many_to_many_group_map(group_map_path)
+    netlist = connect_netlist(parse_group_netlist(netlist_path))
 
-    def glob_groups(glob_str: str) -> List[Group]:
+    def glob_groups(glob_str: str) -> List[GroupWithConnection]:
         pattern = compile_group_glob(glob_str)
-        groups = list({
+        groups = [
             group
-            for group in group_map.groups
+            for group in netlist.groups.values()
             if does_match_pattern(pattern, group.get_id())
-        })
+        ]
         groups.sort(key=lambda g: g.get_id())
         return groups
 
@@ -82,7 +83,7 @@ def main() -> None:
     template = env.get_template(template_name)
     print(
         template.render(
-            group_map=group_map,
+            netlist=netlist,
             glob_groups=glob_groups,
             stringify_group_id=stringify_group_id,
             pascal_case=_pascal_case,
