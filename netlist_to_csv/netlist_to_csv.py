@@ -7,13 +7,17 @@ import re
 
 from common_types.group_types import (
     GlobalGroupPinIdentifier,
+    GroupGlob,
     GroupIdentifier,
     GroupNetlistWithConnections,
     GroupPath,
     GroupPinName,
     GroupType,
+    GroupWithConnection,
     Schematic,
+    compile_group_glob,
     connect_netlist,
+    does_match_pattern,
     stringify_group_id,
 )
 from common_types.parse_xml import parse_group_netlist
@@ -69,6 +73,34 @@ def _simplify_nets(
     return netlist
 
 
+# This is for example used for connectors.
+# There we only care about connectors and don't care about connections between connectors,
+# only from connector to other groups (i.e., non-root groups).
+def _focus_on_root(
+    netlist: GroupNetlistWithConnections,
+    root_group_glob: GroupGlob | None,
+) -> GroupNetlistWithConnections:
+    # Remove all root pins from the other pins.
+    def remove_root_pins(group: GroupWithConnection) -> GroupWithConnection:
+        group.pins = {
+            pin: {
+                other_pin
+                for other_pin in other_pins
+                if not does_match_pattern(root_group_glob, other_pin.group_id)
+            }
+            for (pin, other_pins) in group.pins.items()
+        }
+        return group
+
+    # Remove all other groups.
+    netlist.groups = {
+        group_id: remove_root_pins(group)
+        for (group_id, group) in netlist.groups.items()
+        if does_match_pattern(root_group_glob, group_id)
+    }
+    return netlist
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         prog=TOOL_NAME,
@@ -76,6 +108,14 @@ def main() -> None:
         "The output is printed to stdout, errors and warnings to stderr.",
     )
     parser.add_argument("group_netlist_path", help="The path to the group netlist.")
+    parser.add_argument(
+        "--root-group-glob",
+        help="From what groups' perspective should the output be? "
+        "This field is a glob. Use ** to match multiple path nodes. "
+        "If this field is provided, only groups that don't match are considered as other groups. "
+        "I.e., connections from matched groups to other matched groups are ignored. "
+        "If this isn't provided, all groups will be included.",
+    )
     parser.add_argument(
         "--simplify-pins",
         help="If a group connects to a pin that has this field as a substring, reduce all pins that belong to this net to a single pin with the provided name. "
@@ -92,8 +132,15 @@ def main() -> None:
         for pin in ([] if args.simplify_pins is None else args.simplify_pins.split(","))
     }
 
+    root_group_glob = (
+        None
+        if args.root_group_glob is None
+        else compile_group_glob(args.root_group_glob)
+    )
+
     netlist = connect_netlist(parse_group_netlist(group_netlist_path))
     simple_netlist = _simplify_nets(netlist, simplify_pins)
+    simple_root_focus_netlist = _focus_on_root(simple_netlist, root_group_glob)
 
     csv_writer = csv.DictWriter(
         sys.stdout,
@@ -103,10 +150,10 @@ def main() -> None:
         quoting=csv.QUOTE_MINIMAL,
     )
     csv_writer.writeheader()
-    group_ids = list(simple_netlist.groups.keys())
+    group_ids = list(simple_root_focus_netlist.groups.keys())
     group_ids.sort()
     for group_id in group_ids:
-        group = simple_netlist.groups[group_id]
+        group = simple_root_focus_netlist.groups[group_id]
         pins = list(group.pins.items())
         pins.sort(key=lambda p: _get_sort_key(p[0]))
         for pin_name, other_pins in pins:

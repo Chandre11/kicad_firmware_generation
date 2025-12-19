@@ -150,7 +150,7 @@ class GroupNetlistWithConnections:
     """
     Represent what groups there are and how they are connected.
     The GroupNetlist has a set of nets.
-    This class also has groups that already know what their pins are connected to.
+    This class instead has groups that already know what their pins are connected to.
     """
 
     sources: Set[Path]
@@ -161,7 +161,6 @@ class GroupNetlistWithConnections:
     All groups have pins with None set as the rootPinName
     """
     groups: Dict[GroupIdentifier, GroupWithConnection]
-    nets: Set[GroupNet]
 
 
 def stringify_group_id(id: GroupIdentifier) -> str:
@@ -227,15 +226,6 @@ def _dumb_connect_group(group: Group) -> GroupWithConnection:
     return connected_group
 
 
-def _unconnect_group(connected_group: GroupWithConnection) -> Group:
-    group = Group()
-    group.schematic = connected_group.schematic
-    group.path = connected_group.path
-    group.group_type = connected_group.group_type
-    group.group_map_fields = connected_group.group_map_fields
-    return group
-
-
 def connect_netlist(netlist: GroupNetlist) -> GroupNetlistWithConnections:
     connected_netlist = GroupNetlistWithConnections()
     connected_netlist.sources = netlist.sources
@@ -245,7 +235,6 @@ def connect_netlist(netlist: GroupNetlist) -> GroupNetlistWithConnections:
         group_id: _dumb_connect_group(group)
         for (group_id, group) in netlist.groups.items()
     }
-    connected_netlist.nets = netlist.nets
 
     # Figure out what groups are connected how.
     for net in netlist.nets:
@@ -263,19 +252,3 @@ def connect_netlist(netlist: GroupNetlist) -> GroupNetlistWithConnections:
                 != GlobalGroupPinIdentifier(group_identifier, group_pin_name)
             }
     return connected_netlist
-
-
-def unconnect_netlist(connected_netlist: GroupNetlistWithConnections) -> GroupNetlist:
-    """
-    Simply strip out the connection data from each group.
-    """
-    netlist = GroupNetlist()
-    netlist.sources = connected_netlist.sources
-    netlist.date = datetime.now()
-    netlist.tool = connected_netlist.tool
-    netlist.groups = {
-        group_id: _unconnect_group(group)
-        for (group_id, group) in connected_netlist.groups.items()
-    }
-    netlist.nets = connected_netlist.nets
-    return netlist
