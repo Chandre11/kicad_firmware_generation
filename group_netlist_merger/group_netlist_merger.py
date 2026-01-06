@@ -186,7 +186,10 @@ def main() -> None:
 
     netlists: Set[GroupNetlist] = set()
     for netlist_path in netlist_paths:
-        netlists.add(parse_group_netlist(netlist_path))
+        netlist = parse_group_netlist(netlist_path)
+        for other_netlist in netlists:
+            assert len(other_netlist.sources & netlist.sources) == 0
+        netlists.add(netlist)
 
     merged_group_netlist = _merge_group_netlists(
         netlists,
