@@ -1,15 +1,69 @@
-# KiCad Code Generation
+# kicad_firmware_gen: Extract Information from KiCad Schematics
+When you design hardware, you often develop firmware, too.
+That firmware needs to know which controller pin controls what functionality.
+So you adapt the firmware to the specific hardware, e.g., with a pin definition C header.
+What if you didn't have to do so manually?
+kicad_firmware_gen is a tool suite for generating (parts of) firmware based on information from KiCad schematics.<br />
+What even is a single functionality the controller cares about?
+Typically a group of components perform a function the firmware controls.
+Therefore, kicad_firmware_gen thinks in **Group**s, each representing multiple components.
+Our **Group Netlist XML** file format stores this information of your KiCad schematic:
+What Groups are there and how are they connected?
 
-Parse KiCad [intermediate XML netlist format](https://docs.kicad.org/9.0/en/eeschema/eeschema.html#generator-command-line-format).
+There are four programs around the Group Netlist:
+1. kicad_group_netlister: Extract Information from your KiCad schematics and create a Group Netlist XML file.
+2. code_gen: Take your Jinja2 template, hands it the information from the Group Netlist and generates your firmware or any other file:
+    C++, Rust, HTML or Markdown Documentation or maybe even some SVG for your child to play with?
+    The sky is the limit!
+    Actually, we are the DLR, soo...why not build a satellite with this?
+3. group_netlist_merger: When you have multiple schematics connected together, just merge their Group Netlists.
+4. netlist_to_csv: Convert a Group Netlist into a spreadsheet; for those who like spreadsheets.
 
-Create the netlist, group_map and code like this:
-```bash
-kicad-cli sch export netlist --format kicadxml --output ICA_EPS_Distribution_netlist.xml ~/pluto_eps_distribution/ICA_EPS_Distribution.kicad_sch
-python3 -m kicad_group_mapper.kicad_group_mapper ICA_EPS_Distribution_netlist.xml '/Controller/Controller' > ICA_EPS_Distribution_group_map.xml
-python3 -m code_gen.code_gen ICA_EPS_Distribution_group_map.xml pluto_eps_templates/board.h.tmpl > board.h
+![kicad_firmware_gen overview](./software_overview.png)
+
+The [common_types](./common_types) directory contains an independent library to parse, handle and serialise a Group Netlist
+If you have a use-case we haven't yet come up with, that's a place to start.
+
+### Installation
+- Install KiCad, Python and Jinja2: `sudo apt install kicad python3 python3-jinja2`
+- `git clone https://TODO`
+- `cd kicad_firmware_gen`
+- `python3 -m pip install -e .`
+
+### Quick Start
+Give every component of interest the `GroupType` field in KiCad and use `GroupPin1`, `GroupPin2`, ... to give every pin a name.
+Components with the same Group Type on the same sheet belong to the same Group.
+The Group will have all its components' pins with an associated `GroupPinx` field.
+
+```
+# Create a KiCad Netlist.
+# Replace `your_schematics.kicad_sch` with the path to your root schematics file.
+# KiCad will read all components on subsheets, too.
+kicad-cli sch export netlist --format kicadxml --output kicad_netlist.xml your_schematics.kicad_sch
+
+# Convert into Group Netlist.
+python3 -m kicad_group_netlister.kicad_group_netlister kicad_netlistb.xml > group_netlist.xml
+
+# Generate Firmware from Jinja2 Template.
+python3 -m code_gen.code_gen group_netlist.xml my_template.c.tmpl > output.c
 ```
 
-## Steps
-- understand what type of use (mix is possible)
-    1. snippets (reused components that one can annotate once and use multiple times)
-    2. no snippets, annotate the actual use directly (more time-consuming)
+### Merging multiple Group Netlist
+```
+# Merge two Group Netlists.
+python3 -m group_netlist_merger.group_netlist_merger \
+    --connect-group-glob 'MyFirstSchematic/Group1,MyFirstSchematic/Group2' \
+    even_odd first_group_netlist.xml second_group_netlist > combined_group_netlist.xml
+```
+
+### Create a CSV from a Group Netlist
+```
+python3 -m netlist_to_csv.netlist_to_csv group_netlist.xml
+    --root-group-glob '**/Connector*' \
+    --simplify-pins 'GND' > ${GENERATED_DIR}/connectors.csv
+```
+
+## More Information
+We are in the process of writing a thesis about kicad_firmware_gen.
+[Our preprint](./eps_firmware_generation_v6.pdf) contains detailed information on tool use, implementation and the Group Netlist specification.
+While we publish all other files under the [MIT license](./LICENSE), we reserve all rights to this file.
