@@ -1,13 +1,3 @@
-ICA_EPS_Distribution_netlist.xml
-ICA_EPS_Distribution_group_netlist.xml
-ICA_EPS_SOLBAT_netlist.xml
-ICA_EPS_SOLBAT_group_netlist.xml
-combined_group_netlist.xml
-combined_group_many_to_many_map.xml
-combined_group_many_to_many_map_connectors.xml
-board.h
-connectors.csv
-
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]

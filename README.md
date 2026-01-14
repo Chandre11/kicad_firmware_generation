@@ -26,7 +26,7 @@ If you have a use-case we haven't yet come up with, that's a place to start.
 
 ### Installation
 - Install KiCad, Python and Jinja2: `sudo apt install kicad python3 python3-jinja2`
-- `git clone https://TODO`
+- `git clone https://github.com/DLR-RY/kicad_firmware_generation`
 - `cd kicad_firmware_gen`
 - `python3 -m pip install -e .`
 
@@ -35,18 +35,23 @@ Give every component of interest the `GroupType` field in KiCad and use `GroupPi
 Components with the same Group Type on the same sheet belong to the same Group.
 The Group will have all its components' pins with an associated `GroupPinx` field.
 
+Create a KiCad Netlist.
+Replace `your_schematics.kicad_sch` with the path to your root schematics file.
+KiCad will read all components on subsheets, too.
 ```
-# Create a KiCad Netlist.
-# Replace `your_schematics.kicad_sch` with the path to your root schematics file.
-# KiCad will read all components on subsheets, too.
 kicad-cli sch export netlist --format kicadxml --output kicad_netlist.xml your_schematics.kicad_sch
+```
 
-# Convert into Group Netlist.
+Convert into Group Netlist.
+```
 python3 -m kicad_group_netlister.kicad_group_netlister kicad_netlistb.xml > group_netlist.xml
+```
 
-# Generate Firmware from Jinja2 Template.
+Generate Firmware from Jinja2 Template.
+```
 python3 -m code_gen.code_gen group_netlist.xml my_template.c.tmpl > output.c
 ```
+Use the `--help` flag on any tool and check out the preprint thesis below for more information.
 
 ### Merging multiple Group Netlist
 ```
@@ -65,6 +70,6 @@ python3 -m netlist_to_csv.netlist_to_csv group_netlist.xml
 
 ## More Information
 We are in the process of writing a thesis about kicad_firmware_gen.
-[Our preprint](./eps_firmware_generation_preprint.pdf) contains detailed information on tool use, implementation and the Group Netlist specification.
+[Our preprint (in eps_firmware_generation_preprint.pdf)](./eps_firmware_generation_preprint.pdf) contains detailed information on tool use, implementation and the Group Netlist specification.
 However, there are still major chapters missing.
 Also, while we publish all other files under the [MIT license](./LICENSE), we reserve all rights to this file.
