@@ -1,3 +1,4 @@
+import argparse
 import sys
 from pathlib import Path
 from typing import List
@@ -13,6 +14,9 @@ from common_types.group_types import (
     stringify_group_id,
 )
 from common_types.parse_xml import parse_group_netlist
+
+TOOL_NAME = "code_gen v0.1.0"
+TOOL_NAME_WITH_VERSION = f"{TOOL_NAME} v0.1.0"
 
 
 def _change_case(in_str: str, first_upper: bool) -> str:
@@ -38,18 +42,40 @@ def _camel_case(in_str: str) -> str:
     return _change_case(in_str, False)
 
 
-# TODO: use argparse
 def main() -> None:
-    if len(sys.argv) != 3 and len(sys.argv) != 4:
-        print(
-            "Error: Provide two arguments: the input file path, the path to the template and optionally the path to the template directory environment.",
-            file=sys.stderr,
-        )
-        sys.exit(1)
-    netlist_path = Path(sys.argv[1])
-    template_path = Path(sys.argv[2])
+    parser = argparse.ArgumentParser(
+        prog=TOOL_NAME,
+        description="Generate a file from a Jinja2 template based on the information from a Group Netlist. "
+        "The output is printed to stdout, errors and warnings to stderr.",
+    )
+    parser.add_argument(
+        "group_netlist_file",
+        help="The path to a Group Netlist file.",
+    )
+    parser.add_argument(
+        "template_file_path",
+        help="The path to a Jinja2 template. "
+        "This file may include other template files. "
+        "You may specify the template directory environment these included template files are relative to. "
+        "See the --template-dir-env argument. "
+        "Alternatively, code_gen uses the parent directory of the template_file_path.",
+    )
+    parser.add_argument(
+        "--template-dir-env",
+        help="The path to the Jinja2 template directory environment.",
+    )
+    parser.add_argument(
+        "--output",
+        help="The output path. Print to stdout if not provided.",
+    )
+    args = parser.parse_args()
+
+    netlist_path = Path(args.group_netlist_file)
+    template_path = Path(args.template_file_path)
     template_env_path = (
-        Path(sys.argv[3]) if len(sys.argv) == 4 else template_path.parent
+        args.template_dir_env
+        if args.template_dir_env is not None
+        else template_path.parent
     )
     if not template_path.is_relative_to(template_env_path):
         print(
@@ -81,16 +107,20 @@ def main() -> None:
         undefined=StrictUndefined,
     )
     template = env.get_template(template_name)
-    print(
-        template.render(
-            netlist=netlist,
-            glob_groups=glob_groups,
-            stringify_group_id=stringify_group_id,
-            pascal_case=_pascal_case,
-            camel_case=_camel_case,
-            get_parent_group_path=get_parent_group_path,
-        )
+    output = template.render(
+        netlist=netlist,
+        glob_groups=glob_groups,
+        stringify_group_id=stringify_group_id,
+        pascal_case=_pascal_case,
+        camel_case=_camel_case,
+        get_parent_group_path=get_parent_group_path,
     )
+    if args.output is not None:
+        print(f"Printing output to: {args.output}")
+        with open(args.output, "w") as file:
+            file.write(output)
+    else:
+        print(output)
 
 
 if __name__ == "__main__":

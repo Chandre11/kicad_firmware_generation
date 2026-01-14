@@ -18,6 +18,7 @@ from common_types.parse_xml import parse_group_netlist
 from common_types.stringify_xml import stringify_group_netlist
 
 TOOL_NAME = "group_netlist_merger v0.1.0"
+TOOL_NAME_WITH_VERSION = f"{TOOL_NAME} v0.1.0"
 
 
 class PinMapper(Enum):
@@ -181,6 +182,10 @@ def main() -> None:
         "You may provide multiple.",
         action="append",
     )
+    parser.add_argument(
+        "--output",
+        help="The output path. Print to stdout if not provided.",
+    )
     args = parser.parse_args()
     netlist_paths = {Path(path) for path in args.group_netlist_file}
 
@@ -201,7 +206,13 @@ def main() -> None:
         else {compile_group_glob(group_glob) for group_glob in args.connect_group_glob},
         args.pin_mapper,
     )
-    sys.stdout.buffer.write(stringify_group_netlist(connected_merged_group_netlist))
+    output = stringify_group_netlist(connected_merged_group_netlist)
+    if args.output is not None:
+        print(f"Printing output to: {args.output}")
+        with open(args.output, "wb") as file:
+            file.write(output)
+    else:
+        sys.stdout.buffer.write(output)
 
 
 if __name__ == "__main__":

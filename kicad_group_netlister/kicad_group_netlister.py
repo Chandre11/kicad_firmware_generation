@@ -34,8 +34,9 @@ from kicad_group_netlister.kicad_types import (
 GROUP_TYPE_FIELD_NAME = "GroupType"
 GROUP_PIN_FIELD_PREFIX = "GroupPin"
 GROUP_MAP_FIELD_PREFIX = "GroupMapField"
-# TODO: set this properly
+
 TOOL_NAME = "kicad_group_netlister v0.1.0"
+TOOL_NAME_WITH_VERSION = f"{TOOL_NAME} v0.1.0"
 
 
 def _group_components_by_group(
@@ -169,7 +170,7 @@ def _gen_group_netlist(
     group_netlist = GroupNetlist()
     group_netlist.sources = {netlist.source}
     group_netlist.date = datetime.now()
-    group_netlist.tool = TOOL_NAME
+    group_netlist.tool = TOOL_NAME_WITH_VERSION
 
     # Create representations for all groups without their pins.
     # same as raw_groups_lookup but this time with the final Group class
@@ -306,6 +307,10 @@ def main() -> None:
         "kicad_netlist_file",
         help="The path to a KiCad Netlist file (in the kicadxml format).",
     )
+    parser.add_argument(
+        "--output",
+        help="The output path. Print to stdout if not provided.",
+    )
     args = parser.parse_args()
     kicad_netlist_path = Path(args.kicad_netlist_file)
 
@@ -315,7 +320,13 @@ def main() -> None:
     groups_lookup, groups_reverse_lookup = _group_components_by_group(kicad_netlist)
     netlist = _gen_group_netlist(kicad_netlist, groups_lookup, groups_reverse_lookup)
 
-    sys.stdout.buffer.write(stringify_group_netlist(netlist))
+    output = stringify_group_netlist(netlist)
+    if args.output is not None:
+        print(f"Printing output to: {args.output}")
+        with open(args.output, "wb") as file:
+            file.write(output)
+    else:
+        sys.stdout.buffer.write(output)
 
 
 if __name__ == "__main__":

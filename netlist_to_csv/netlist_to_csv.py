@@ -23,8 +23,8 @@ from common_types.group_types import (
 )
 from common_types.parse_xml import parse_group_netlist
 
-# TODO: set this properly
 TOOL_NAME = "group_many_to_many_map_to_csv v0.1.0"
+TOOL_NAME_WITH_VERSION = f"{TOOL_NAME} v0.1.0"
 
 sort_key_pattern = re.compile(r"(\d+)")
 
@@ -124,6 +124,10 @@ def main() -> None:
         "When more than on simplification matches, an arbitraty one will be chosen."
         "This is, for example, useful to replace all GND connections with a single GND pin.",
     )
+    parser.add_argument(
+        "--output",
+        help="The output path. Print to stdout if not provided.",
+    )
     args = parser.parse_args()
 
     group_netlist_path = Path(args.group_netlist_path)
@@ -143,8 +147,15 @@ def main() -> None:
     simple_netlist = _simplify_nets(netlist, simplify_pins)
     simple_root_focus_netlist = _focus_on_root(simple_netlist, root_group_glob)
 
+    if args.output is not None:
+        print(f"Printing output to: {args.output}")
+        # We can't use with because we might print to stdout.
+        output_file = open(args.output, "w")
+    else:
+        output_file = sys.stdout
+
     csv_writer = csv.DictWriter(
-        sys.stdout,
+        output_file,
         delimiter=",",
         quotechar='"',
         fieldnames=["schematic", "group_path", "group_type", "pin_name", "other_pins"],
@@ -171,6 +182,7 @@ def main() -> None:
                 "pin_name": pin_name,
                 "other_pins": other_pins_str,
             })
+    output_file.close()
 
 
 if __name__ == "__main__":

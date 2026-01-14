@@ -53,23 +53,26 @@ python3 -m code_gen.code_gen group_netlist.xml my_template.c.tmpl > output.c
 ```
 Use the `--help` flag on any tool and check out the preprint thesis below for more information.
 
-### Merging multiple Group Netlist
+### Merging multiple Group Netlists
 ```
 # Merge two Group Netlists.
 python3 -m group_netlist_merger.group_netlist_merger \
     --connect-group-glob 'MyFirstSchematic/Group1,MyFirstSchematic/Group2' \
     even_odd first_group_netlist.xml second_group_netlist > combined_group_netlist.xml
 ```
+We explain the arguments in the preprint below.
 
-### Create a CSV from a Group Netlist
+### Convert Group Netlist to CSV
 ```
 python3 -m netlist_to_csv.netlist_to_csv group_netlist.xml
     --root-group-glob '**/Connector*' \
     --simplify-pins 'GND' > ${GENERATED_DIR}/connectors.csv
 ```
+We explain the arguments in the preprint below.
 
 ## More Information
 We are in the process of writing a thesis about kicad_firmware_gen.
 [Our preprint (in eps_firmware_generation_preprint.pdf)](./eps_firmware_generation_preprint.pdf) contains detailed information on tool use, implementation and the Group Netlist specification.
+Especially section 4.1 and below are interesting to users.
 However, there are still major chapters missing.
 Also, while we publish all other files under the [MIT license](./LICENSE), we reserve all rights to this file.
