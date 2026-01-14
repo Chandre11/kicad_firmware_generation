@@ -19,7 +19,7 @@ There are four programs around the Group Netlist:
 3. group_netlist_merger: When you have multiple schematics connected together, just merge their Group Netlists.
 4. netlist_to_csv: Convert a Group Netlist into a spreadsheet; for those who like spreadsheets.
 
-![kicad_firmware_gen overview](./software_overview.png)
+![kicad_firmware_gen overview](./software_overview.svg)
 
 The [common_types](./common_types) directory contains an independent library to parse, handle and serialise a Group Netlist
 If you have a use-case we haven't yet come up with, that's a place to start.
