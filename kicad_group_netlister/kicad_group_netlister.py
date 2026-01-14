@@ -284,7 +284,8 @@ def _check_kicad_netlist_structure(netlist: KiCadNetlist) -> None:
 
     for required_path, requiring_path in required_paths:
         if required_path not in sheet_paths:
-            # TODO: read the schematics file directly and figure this out perfectly.
+            # We could also read the schematics file directly and figure this out perfectly.
+            # But we decided against reading the schematics file at all.
             print(
                 f"Warning: The last node of sheet path {requiring_path} uses the character `/`. "
                 "This is not allowed because then separating path nodes isn't possible. "

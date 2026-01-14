@@ -187,7 +187,6 @@ def get_parent_group_path(path: GroupPath) -> GroupPath:
     return GroupPath("/".join(nodes))
 
 
-# TODO: ensure no groups have a comma inside them.
 def compile_group_glob(group_glob_str: str) -> GroupGlob:
     """
     A group glob is a list of path globs with *, **, [].
