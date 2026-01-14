@@ -41,6 +41,7 @@ TOOL_NAME_WITH_VERSION = f"{TOOL_NAME} v0.1.0"
 
 def _group_components_by_group(
     netlist: KiCadNetlist,
+    lenient_names: bool,
 ) -> Tuple[RawGroupLookup, GroupsReverseLookup]:
     groups = RawGroupLookup(dict())
     reverse_lookup = GroupsReverseLookup(dict())
@@ -61,8 +62,10 @@ def _group_components_by_group(
 
             # This component is not part of any group.
             continue
-        group_type = assert_is_group_type(component.fields[GROUP_TYPE_FIELD_NAME])
-        group_path = assert_is_group_path(component.sheetpath)
+        group_type = assert_is_group_type(
+            component.fields[GROUP_TYPE_FIELD_NAME], lenient=lenient_names
+        )
+        group_path = assert_is_group_path(component.sheetpath, lenient=lenient_names)
         group_identifier = GroupIdentifier(netlist.schematic, group_path, group_type)
 
         if group_identifier not in groups:
@@ -107,6 +110,7 @@ def _group_components_by_group(
 # Groups without an explicit naming don't appear in this dict.
 def _get_explicit_pin_name_lookups(
     groups_lookup: RawGroupLookup,
+    lenient_names: bool,
 ) -> GroupPinNameLookups:
     explicit_pin_namings = GroupPinNameLookups(dict())
     for group_identifier, raw_group in groups_lookup.items():
@@ -131,7 +135,7 @@ def _get_explicit_pin_name_lookups(
                     assert global_pin_identifier not in other_expicit_in_naming_group
 
                 # This is the name the user explicitly set for this pin.
-                group_pin_name = assert_is_pin_name(field_value)
+                group_pin_name = assert_is_pin_name(field_value, lenient=lenient_names)
                 if group_pin_name in group_pin_names:
                     print(
                         f"Error: The GroupPin {group_pin_name} exists at least twice for the group {stringify_group_id(group_identifier)}.",
@@ -159,8 +163,11 @@ def _gen_group_netlist(
     netlist: KiCadNetlist,
     raw_groups_lookup: RawGroupLookup,
     groups_reverse_lookup: GroupsReverseLookup,
+    lenient_names: bool,
 ) -> GroupNetlist:
-    explicit_pin_name_lookups = _get_explicit_pin_name_lookups(raw_groups_lookup)
+    explicit_pin_name_lookups = _get_explicit_pin_name_lookups(
+        raw_groups_lookup, lenient_names
+    )
 
     # We only use this to check that no two components have the same global group pin identifier.
     global_group_pin_to_component: Dict[GlobalGroupPinIdentifier, KiCadComponentRef] = (
@@ -210,7 +217,9 @@ def _gen_group_netlist(
             else:
                 # When the user didn't define any GroupPin names for at all we use a fallback:
                 # We consider all pins that belong to components that belong to the group as pins of the group.
-                group_pin_name = assert_is_pin_name(node.pinfunction)
+                group_pin_name = assert_is_pin_name(
+                    node.pinfunction, lenient=lenient_names
+                )
 
             # Assign None because we represent connections using nets and not other pins in the groups.
             groups_lookup[group_identifier].pins.add(group_pin_name)
@@ -309,17 +318,26 @@ def main() -> None:
         help="The path to a KiCad Netlist file (in the kicadxml format).",
     )
     parser.add_argument(
+        "--lenient-names",
+        help="Replace disallowed characters with _ (underscore) in Schematics, Group Pin Names, Group Types and Group Paths.",
+        action="store_true",
+    )
+    parser.add_argument(
         "--output",
         help="The output path. Print to stdout if not provided.",
     )
     args = parser.parse_args()
     kicad_netlist_path = Path(args.kicad_netlist_file)
 
-    kicad_netlist = parse_kicad_netlist(kicad_netlist_path)
+    kicad_netlist = parse_kicad_netlist(kicad_netlist_path, args.lenient_names)
     _check_kicad_netlist_structure(kicad_netlist)
 
-    groups_lookup, groups_reverse_lookup = _group_components_by_group(kicad_netlist)
-    netlist = _gen_group_netlist(kicad_netlist, groups_lookup, groups_reverse_lookup)
+    groups_lookup, groups_reverse_lookup = _group_components_by_group(
+        kicad_netlist, args.lenient_names
+    )
+    netlist = _gen_group_netlist(
+        kicad_netlist, groups_lookup, groups_reverse_lookup, args.lenient_names
+    )
 
     output = stringify_group_netlist(netlist)
     if args.output is not None:

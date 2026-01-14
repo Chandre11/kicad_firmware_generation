@@ -16,7 +16,7 @@ from kicad_group_netlister.kicad_types import (
 )
 
 
-def parse_kicad_netlist(netlist_path: Path) -> KiCadNetlist:
+def parse_kicad_netlist(netlist_path: Path, lenient_names: bool) -> KiCadNetlist:
     netlist = KiCadNetlist()
 
     tree = ET.parse(netlist_path)
@@ -27,7 +27,9 @@ def parse_kicad_netlist(netlist_path: Path) -> KiCadNetlist:
     assert source_tags[0].text is not None
     netlist.source = Path(source_tags[0].text)
 
-    netlist.schematic = assert_is_schematic(netlist.source.name.rstrip(".kicad_sch"))
+    netlist.schematic = assert_is_schematic(
+        netlist.source.name.rstrip(".kicad_sch"), lenient=lenient_names
+    )
     assert "." not in netlist.schematic
     assert "/" not in netlist.schematic
 

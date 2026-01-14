@@ -258,42 +258,79 @@ SCHEMATIC_PATTERN = re.compile(r"^[a-zA-Z0-9_\-\+ ]+$")
 GROUP_TYPE_PATTERN = SCHEMATIC_PATTERN
 PIN_NAME_PATTERN = SCHEMATIC_PATTERN
 
+CHAR_PATTERN = re.compile(r"^[a-zA-Z0-9_\-\+ ]$")
+CHAR_WITH_SLASH_PATTERN = re.compile(r"^[a-zA-Z0-9_/\-\+ ]$")
 
-def assert_is_group_path(in_str: str) -> GroupPath:
+
+def assert_is_group_path(in_str: str, lenient=False) -> GroupPath:
+    if lenient:
+        in_str = replace_illegal_characters_wo_slash(in_str)
     if GROUP_PATH_PATTERN.match(in_str) is None:
         print(
-            f"Error: {in_str} is no valid GroupPath",
+            f"Error: {in_str} is no valid GroupPath, consider the --lenient-names flag.",
             file=sys.stderr,
         )
         sys.exit(1)
     return GroupPath(in_str)
 
 
-def assert_is_schematic(in_str: str) -> Schematic:
+def assert_is_schematic(in_str: str, lenient=False) -> Schematic:
+    if lenient:
+        in_str = replace_illegal_characters(in_str)
     if SCHEMATIC_PATTERN.match(in_str) is None:
         print(
-            f"Error: {in_str} is no valid Schematic",
+            f"Error: {in_str} is no valid Schematic, consider the --lenient-names flag.",
             file=sys.stderr,
         )
         sys.exit(1)
     return Schematic(in_str)
 
 
-def assert_is_group_type(in_str: str) -> GroupType:
+def assert_is_group_type(in_str: str, lenient=False) -> GroupType:
+    if lenient:
+        in_str = replace_illegal_characters(in_str)
     if GROUP_TYPE_PATTERN.match(in_str) is None:
         print(
-            f"Error: {in_str} is no valid GroupPath",
+            f"Error: {in_str} is no valid GroupPath, consider the --lenient-names flag.",
             file=sys.stderr,
         )
         sys.exit(1)
     return GroupType(in_str)
 
 
-def assert_is_pin_name(in_str: str) -> GroupPinName:
+def assert_is_pin_name(in_str: str, lenient=False) -> GroupPinName:
+    if lenient:
+        in_str = replace_illegal_characters(in_str)
     if PIN_NAME_PATTERN.match(in_str) is None:
         print(
-            f"Error: {in_str} is no valid GroupPinName",
+            f"Error: {in_str} is no valid GroupPinName, consider the --lenient-names flag.",
             file=sys.stderr,
         )
         sys.exit(1)
     return GroupPinName(in_str)
+
+
+def replace_illegal_characters(in_str: str) -> str:
+    def char_replace(c: str) -> str:
+        if CHAR_PATTERN.match(c) is None:
+            print(
+                f"Warning: replacing {c} in {in_str} with _",
+                file=sys.stderr,
+            )
+            return "_"
+        return c
+
+    return "".join(map(char_replace, in_str))
+
+
+def replace_illegal_characters_wo_slash(in_str: str) -> str:
+    def char_replace(c: str) -> str:
+        if CHAR_WITH_SLASH_PATTERN.match(c) is None:
+            print(
+                f"Warning: replacing {c} in {in_str} with _",
+                file=sys.stderr,
+            )
+            return "_"
+        return c
+
+    return "".join(map(char_replace, in_str))
